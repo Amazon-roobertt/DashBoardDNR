@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNR Logistics Performance & DA Offenders Timeline</title>
+    
+    <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg" type="image/svg+xml">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+        <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Custom scrollbars for a cleaner UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Sticky CSS for the complex timeline table */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        /* --- Custom Dark Mode Overrides --- */
+        body.dark {
+            background-color: #0c111d; /* Slate 950 Deep */
+            color: #f8fafc;
+        }
+        body.dark .bg-white {
+            background-color: #161e2e; /* Slate 900 Amazon-like */
+            color: #f8fafc;
+            border-color: #243048;
+        }
+        body.dark .border-slate-200 {
+            border-color: #243048;
+        }
+        body.dark .text-slate-900 {
+            color: #f8fafc;
+        }
+        body.dark .text-slate-800 {
+            color: #f1f5f9;
+        }
+        body.dark .text-slate-700 {
+            color: #e2e8f0;
+        }
+        body.dark .text-slate-600 {
+            color: #cbd5e1;
+        }
+        body.dark .text-slate-500 {
+            color: #94a3b8;
+        }
+        body.dark .bg-slate-50 {
+            background-color: #111827;
+        }
+        body.dark .bg-slate-100 {
+            background-color: #0c111d;
+        }
+        body.dark .bg-slate-200 {
+            background-color: #1f2937;
+            color: #f1f5f9;
+        }
+        body.dark .divide-slate-200 > * + * {
+            border-color: #243048;
+        }
+        body.dark .divide-slate-200 {
+            border-color: #243048;
+        }
+        body.dark .hover\:bg-slate-100:hover {
+            background-color: #1f2937;
+        }
+        body.dark .bg-slate-900 {
+            background-color: #0c111d;
+        }
+        body.dark #timelineTable tfoot {
+            background-color: #1f2937;
+            color: #ffffff;
+            border-top-color: #243048;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+        <header class="bg-[#131921] text-white shadow-md border-b border-slate-800 transition-colors duration-200">
+        <div class="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-[#FF9900] rounded-lg shadow-inner text-slate-950">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="9" rx="1" />
+                        <rect x="14" y="3" width="7" height="5" rx="1" />
+                        <rect x="3" y="16" width="7" height="5" rx="1" />
+                        <rect x="14" y="12" width="7" height="9" rx="1" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base tracking-tight leading-none mb-0.5">DNR LOGISTICS</h1>
+                    <p class="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Amazon Delivery Operations</p>
+                </div>
+            </div>
+
+                        <div class="flex flex-col items-center justify-center">
+                <span class="text-xs font-black tracking-tight text-white leading-none">amazon</span>
+                <svg class="w-14 h-3 text-[#FF9900]" viewBox="0 0 54 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 2C15 9 39 9 53 2M44 1C46 2.5 50.5 4 53 2C52 4.5 49 8.5 46.5 9" stroke="#FF9900" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                                <label class="relative flex items-center justify-center px-3 py-1.5 bg-[#232f3e] hover:bg-[#37475a] text-slate-100 rounded-lg cursor-pointer transition text-xs font-bold border border-slate-700 select-none">
+                    <span>Selecionar Arquivo</span>
+                    <input type="file" id="excelFile" class="hidden" accept=".xlsx, .xls, .csv, .ods, .tsv, .txt, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv, text/tab-separated-values" onchange="handleExcelUpload(event)">
+                </label>
+                
+                <button onclick="clearSystem()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition text-xs font-bold border border-slate-700 select-none flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Limpar
+                </button>
+
+                                <button onclick="toggleDarkMode()" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition border border-slate-700 select-none" title="Alternar Visão Noturna">
+                                        <svg class="w-4 h-4 text-[#FF9900]" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+        <div class="bg-white border-b border-slate-200 dark:bg-[#161e2e] dark:border-[#243048] transition-colors duration-200">
+        <div class="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-12">
+            <div class="flex space-x-6 h-full">
+                <button id="tab-dashboard" onclick="switchTab('dashboard')" class="border-b-2 border-transparent h-full px-1 text-sm font-bold text-slate-500 hover:text-[#FF9900] flex items-center transition select-none">
+                    Dashboard Principal
+                </button>
+                <button id="tab-timeline" onclick="switchTab('timeline')" class="border-b-2 border-transparent h-full px-1 text-sm font-bold text-slate-500 hover:text-[#FF9900] flex items-center transition select-none">
+                    Timeline - DA's Ofensores
+                </button>
+            </div>
+        </div>
+    </div>
+
+        <main class="flex-grow max-w-[98%] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+                <div id="empty-state-container" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center justify-center min-h-[450px]">
+            <div class="p-4 bg-amber-50 text-[#FF9900] rounded-full mb-4">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-1 dark:text-white">Nenhum dado importado</h3>
+            <p class="text-sm text-slate-500 max-w-md mx-auto mb-6 dark:text-slate-400">Por favor, faça o upload do seu arquivo de dados para iniciar a análise operacional.</p>
+        </div>
+
+                <div id="view-dashboard" class="hidden">
+            
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2 dark:border-[#243048]">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 dark:text-slate-400">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        Filtros
+                    </span>
+                    <button onclick="clearFilters()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 dark:text-[#FF9900] dark:hover:text-[#e47911]">
+                        Selecionar Tudo
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                                        <div class="relative" id="multi-select-wk-container">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Semanas (WK)</label>
+                        <button type="button" onclick="toggleDropdown('wk')" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#243048] rounded-lg px-3 py-2 text-sm text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span id="label-wk">Todos</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="dropdown-wk" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-[#161e2e] border border-slate-200 dark:border-[#243048] rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto p-2">
+                            <div class="flex justify-between border-b border-slate-100 dark:border-[#243048] pb-1.5 mb-1.5 text-[10px] font-bold text-indigo-600 dark:text-[#FF9900]">
+                                <button type="button" onclick="selectAll('wk', true)" class="hover:underline">Todas</button>
+                                <button type="button" onclick="selectAll('wk', false)" class="hover:underline">Limpar</button>
+                            </div>
+                            <div id="options-wk" class="space-y-1 text-xs max-h-48 overflow-y-auto">
+                                                            </div>
+                        </div>
+                    </div>
+
+                                        <div class="relative" id="multi-select-month-container">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Meses (Cronológico)</label>
+                        <button type="button" onclick="toggleDropdown('month')" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#243048] rounded-lg px-3 py-2 text-sm text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span id="label-month">Todos</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="dropdown-month" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-[#161e2e] border border-slate-200 dark:border-[#243048] rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto p-2">
+                            <div class="flex justify-between border-b border-slate-100 dark:border-[#243048] pb-1.5 mb-1.5 text-[10px] font-bold text-indigo-600 dark:text-[#FF9900]">
+                                <button type="button" onclick="selectAll('month', true)" class="hover:underline">Todos</button>
+                                <button type="button" onclick="selectAll('month', false)" class="hover:underline">Limpar</button>
+                            </div>
+                            <div id="options-month" class="space-y-1 text-xs max-h-48 overflow-y-auto">
+                                                            </div>
+                        </div>
+                    </div>
+
+                                        <div class="relative" id="multi-select-station-container">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Nodes (Stations)</label>
+                        <button type="button" onclick="toggleDropdown('station')" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#243048] rounded-lg px-3 py-2 text-sm text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span id="label-station">Todos</span>
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="dropdown-station" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-[#161e2e] border border-slate-200 dark:border-[#243048] rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto p-2">
+                            <div class="flex justify-between border-b border-slate-100 dark:border-[#243048] pb-1.5 mb-1.5 text-[10px] font-bold text-indigo-600 dark:text-[#FF9900]">
+                                <button type="button" onclick="selectAll('station', true)" class="hover:underline">Todos</button>
+                                <button type="button" onclick="selectAll('station', false)" class="hover:underline">Limpar</button>
+                            </div>
+                            <div id="options-station" class="space-y-1 text-xs max-h-48 overflow-y-auto">
+                                                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 transition-colors">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tracking IDs Totais</p>
+                    <p id="metric-trackings" class="text-2xl font-black text-slate-800 dark:text-white mt-1">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 transition-colors">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Valor Total (SUM)</p>
+                    <p id="metric-value" class="text-2xl font-black text-slate-800 dark:text-white mt-1">R$ 0,00</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 transition-colors">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mapeamento Final Reason</p>
+                    <p id="metric-reasons" class="text-2xl font-black text-slate-800 dark:text-white mt-1">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 transition-colors">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estações Ativas (Nodes)</p>
+                    <p id="metric-stations" class="text-2xl font-black text-slate-800 dark:text-white mt-1">0</p>
+                </div>
+            </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6 transition-colors">
+                <div class="mb-4 text-center">
+                    <h3 class="font-extrabold text-slate-800 dark:text-white text-base">DNR TDGE — Visão Geral por Station</h3>
+                </div>
+                <div class="h-[400px] w-full relative">
+                    <canvas id="chartDnrTdge"></canvas>
+                </div>
+            </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between transition-colors">
+                    <div class="mb-4 text-center">
+                        <h3 class="font-extrabold text-slate-800 dark:text-white text-base">Distribuição de Responsabilidade</h3>
+                    </div>
+                    <div class="h-[280px] w-full relative flex items-center justify-center">
+                        <canvas id="chartResponsabilidade"></canvas>
+                    </div>
+                </div>
+
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between transition-colors">
+                    <div class="mb-4 text-center">
+                        <h3 class="font-extrabold text-slate-800 dark:text-white text-base">Análise Fina por Motivos</h3>
+                    </div>
+                    <div class="h-[280px] w-full relative">
+                        <canvas id="chartMotivos"></canvas>
+                    </div>
+                </div>
+            </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-colors">
+                <div class="mb-4 text-center">
+                    <h3 class="font-extrabold text-slate-800 dark:text-white text-base">Week View — Evolução Temporal</h3>
+                </div>
+                <div class="h-[320px] w-full relative">
+                    <canvas id="chartWeekView"></canvas>
+                </div>
+            </div>
+        </div>
+
+
+                <div id="view-timeline" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-colors">
+                
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#243048] pb-4 mb-4">
+                    <div>
+                        <h3 class="font-black text-slate-800 dark:text-white text-lg">Timeline - DA's Ofensores</h3>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-3">
+                        
+                                                <div class="relative" id="timeline-weeks-selector-container">
+                            <button type="button" onclick="toggleTimelineWeeksDropdown()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-semibold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 dark:bg-slate-800 dark:text-slate-200 dark:border-[#243048]">
+                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                <span>Filtrar Semanas (Colunas)</span>
+                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div id="dropdown-timeline-weeks" class="hidden absolute right-0 mt-1 bg-white dark:bg-[#161e2e] border border-slate-200 dark:border-[#243048] rounded-lg shadow-lg z-30 w-56 p-2">
+                                <div class="flex justify-between border-b border-slate-100 dark:border-[#243048] pb-1.5 mb-1.5 text-[10px] font-bold text-[#FF9900] dark:text-[#FF9900]">
+                                    <button type="button" onclick="toggleAllTimelineWeeks(true)" class="hover:underline">Todas</button>
+                                    <button type="button" onclick="toggleAllTimelineWeeks(false)" class="hover:underline">Limpar</button>
+                                </div>
+                                <div id="timeline-weeks-checkboxes" class="space-y-1 text-xs max-h-48 overflow-y-auto">
+                                                                    </div>
+                            </div>
+                        </div>
+
+                        <button onclick="exportTimelineToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg shadow-sm transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Exportar Excel
+                        </button>
+                        
+                        <div class="flex items-center gap-2 max-w-xs">
+                            <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">Buscar DA:</span>
+                            <input type="text" id="daSearchInput" oninput="renderTimelineTable()" placeholder="Buscar Nome ou ID..." class="w-48 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#243048] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200">
+                        </div>
+                    </div>
+                </div>
+
+                                <div class="flex flex-wrap items-center gap-4 mb-4 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100 dark:bg-slate-800/50 dark:border-[#243048]">
+                    <span class="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Legenda Heatmap (Ocorrências):</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded bg-[#eaeaea] inline-block border border-slate-300"></span>
+                        <span class="text-slate-600 dark:text-slate-300">Sem Ocorrência</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded bg-[#d1fae5] inline-block"></span>
+                        <span class="text-slate-600 dark:text-slate-300">1 – 5</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded bg-[#fef08a] inline-block"></span>
+                        <span class="text-slate-600 dark:text-slate-300">6 – 15</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded bg-[#fed7aa] inline-block"></span>
+                        <span class="text-slate-600 dark:text-slate-300">16 – 30</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded bg-[#fee2e2] inline-block"></span>
+                        <span class="text-slate-600 dark:text-slate-300">> 30</span>
+                    </div>
+                </div>
+
+                                <div class="overflow-x-auto border border-slate-200 dark:border-[#243048] rounded-lg max-h-[600px] overflow-y-auto relative shadow-inner">
+                    <table class="w-full text-xs text-left border-collapse" id="timelineTable">
+                        <thead class="sticky-header bg-slate-900 text-white font-semibold">
+                                                        <tr id="timelineHeaderRow">
+                                <th class="p-3 sticky-col bg-slate-900 border-b border-slate-700">Carregando...</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timelineBody" class="divide-y divide-slate-200 bg-white dark:bg-slate-900">
+                                                    </tbody>
+                        <tfoot id="timelineFooter" class="sticky bottom-0 bg-slate-100 text-slate-800 font-bold border-t border-slate-300 z-10">
+                                                    </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+        <footer class="bg-[#131921] text-slate-400 text-[11px] py-4 border-t border-slate-800 mt-auto">
+        <div class="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>DNR Performance Dashboard & DA Timeline Analyzer.</div>
+            <div>Exclusividade analítica baseada em dados operacionais integrados.</div>
+        </div>
+    </footer>
+
+
+        <script>
+        // Register ChartJS DataLabels Plugin globally
+        Chart.register(ChartDataLabels);
+        
+        // Disable datalabels globally by default to prevent clutter on standard bar datasets
+        Chart.defaults.set('plugins.datalabels', {
+            display: false
+        });
+
+        // Single Global State Source
+        let sourceData = [];      // Contains the direct rows parsed from Excel
+        let filteredData = [];    // Rows after applying the global filters
+        let activeTab = 'dashboard';
+        
+        // Global checkbox filter state
+        let selectedFilters = {
+            wk: [],
+            month: [],
+            station: []
+        };
+
+        // Active week columns checked on the timeline table
+        let timelineActiveWeekKeys = [];
+
+        // Active Sorting Key for Timeline Offenders
+        let timelineSortColumnKey = '';
+
+        // Keep track of charts
+        let chartInstances = {};
+
+        // Custom theme toggling (Light / Visão Noturna)
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+            // Redraw charts using correct visual configurations matching dark or light colors
+            updateCharts();
+            renderTimelineTable();
+        }
+
+        // Return current gridline and text colors dynamically depending on Dark Mode state
+        function getThemeColors() {
+            const isDark = document.body.classList.contains('dark');
+            return {
+                text: isDark ? '#f1f5f9' : '#1e293b',
+                grid: isDark ? '#243048' : '#e2e8f0',
+                axisText: isDark ? '#94a3b8' : '#475569'
+            };
+        }
+
+        // Click outside listener to close custom dropdown menus
+        window.addEventListener('click', function(e) {
+            ['wk', 'month', 'station'].forEach(key => {
+                const container = document.getElementById(`multi-select-${key}-container`);
+                const dropdown = document.getElementById(`dropdown-${key}`);
+                if (container && !container.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            const tlWeeksContainer = document.getElementById('timeline-weeks-selector-container');
+            const tlWeeksDropdown = document.getElementById('dropdown-timeline-weeks');
+            if (tlWeeksContainer && !tlWeeksContainer.contains(e.target)) {
+                tlWeeksDropdown.classList.add('hidden');
+            }
+        });
+
+        function toggleDropdown(key) {
+            ['wk', 'month', 'station'].forEach(k => {
+                const dropdown = document.getElementById(`dropdown-${k}`);
+                if (k === key) {
+                    dropdown.classList.toggle('hidden');
+                } else {
+                    dropdown.classList.add('hidden');
+                }
+            });
+            document.getElementById('dropdown-timeline-weeks').classList.add('hidden');
+        }
+
+        function toggleTimelineWeeksDropdown() {
+            document.getElementById('dropdown-timeline-weeks').classList.toggle('hidden');
+            ['wk', 'month', 'station'].forEach(k => {
+                document.getElementById(`dropdown-${k}`).classList.add('hidden');
+            });
+        }
+
+        // Switch Tabs Logic
+        function switchTab(tabId) {
+            activeTab = tabId;
+            const dashBtn = document.getElementById('tab-dashboard');
+            const timelineBtn = document.getElementById('tab-timeline');
+            const dashView = document.getElementById('view-dashboard');
+            const timelineView = document.getElementById('view-timeline');
+
+            // Apply modern tab border underline classes matching Amazon style
+            if (tabId === 'dashboard') {
+                dashBtn.className = "border-b-2 border-[#FF9900] text-[#FF9900] h-full px-1 text-sm font-bold flex items-center transition select-none";
+                timelineBtn.className = "border-b-2 border-transparent h-full px-1 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center transition select-none";
+
+                if (sourceData.length > 0) {
+                    dashView.classList.remove('hidden');
+                    document.getElementById('empty-state-container').classList.add('hidden');
+                } else {
+                    document.getElementById('empty-state-container').classList.remove('hidden');
+                    dashView.classList.add('hidden');
+                }
+                timelineView.classList.add('hidden');
+                
+                // Recalculate size and redraw graphs
+                if (sourceData.length > 0) {
+                    setTimeout(updateCharts, 50);
+                }
+            } else {
+                timelineBtn.className = "border-b-2 border-[#FF9900] text-[#FF9900] h-full px-1 text-sm font-bold flex items-center transition select-none";
+                dashBtn.className = "border-b-2 border-transparent h-full px-1 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center transition select-none";
+
+                dashView.classList.add('hidden');
+                
+                if (sourceData.length > 0) {
+                    timelineView.classList.remove('hidden');
+                    document.getElementById('empty-state-container').classList.add('hidden');
+                    renderTimelineTable();
+                } else {
+                    document.getElementById('empty-state-container').classList.remove('hidden');
+                    timelineView.classList.add('hidden');
+                }
+            }
+        }
+
+        function getYearFromDate(dateVal) {
+            if (!dateVal) return null;
+            let d = new Date(dateVal);
+            
+            // Handle raw SheetJS serial numbers or numbers in string format
+            if (typeof dateVal === 'number') {
+                d = new Date((dateVal - 25569) * 86400 * 1000);
+            } else if (typeof dateVal === 'string' && !isNaN(dateVal)) {
+                const num = Number(dateVal);
+                if (!isNaN(num) && num > 30000) {
+                    d = new Date((num - 25569) * 86400 * 1000);
+                }
+            } else if (isNaN(d.getTime()) && typeof dateVal === 'string') {
+                // Try parsing standard formats like DD/MM/YYYY or YYYY-MM-DD
+                const parts = dateVal.split('/');
+                if (parts.length === 3) {
+                    d = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else {
+                    const partsDash = dateVal.split('-');
+                    if (partsDash.length === 3) {
+                        if (partsDash[0].length === 4) {
+                            d = new Date(partsDash[0], partsDash[1] - 1, partsDash[2]);
+                        } else {
+                            d = new Date(partsDash[2], partsDash[1] - 1, partsDash[0]);
+                        }
+                    }
+                }
+            }
+            return isNaN(d.getTime()) ? null : d.getFullYear();
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            setLoadingState(true, "Carregando planilha...");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Look silently for 'Dados' or default seamlessly to first tab
+                    let targetSheetName = workbook.SheetNames.find(name => name.toLowerCase().trim() === 'dados');
+                    if (!targetSheetName) {
+                        targetSheetName = workbook.SheetNames[0];
+                    }
+
+                    const worksheet = workbook.Sheets[targetSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (!jsonData || jsonData.length === 0) {
+                        throw new Error("A tabela selecionada está vazia!");
+                    }
+
+                    // Map fields exactly as expected
+                    processExcelData(jsonData);
+                    setLoadingState(false, "Sucesso!");
+                } catch (error) {
+                    console.error(error);
+                    setLoadingState(false, "Erro ao carregar planilha. Certifique-se de que é um Excel ou CSV válido com as colunas corretas.", true);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function setLoadingState(loading, message, isError = false) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (statusDot) {
+                if (loading) {
+                    statusDot.className = "w-2.5 h-2.5 rounded-full bg-[#FF9900] animate-pulse";
+                } else {
+                    statusDot.className = isError ? "w-2.5 h-2.5 rounded-full bg-red-500" : "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                }
+            }
+            if (statusText) {
+                statusText.innerText = message;
+            }
+
+            // Update empty-state-container text dynamically based on loading/error status
+            const emptyText = document.querySelector('#empty-state-container p');
+            if (emptyText) {
+                if (isError) {
+                    emptyText.innerText = message;
+                    emptyText.classList.add('text-red-500', 'font-semibold');
+                } else {
+                    emptyText.innerText = "Por favor, faça o upload do seu arquivo de dados para iniciar a análise operacional.";
+                    emptyText.classList.remove('text-red-500', 'font-semibold');
+                }
+            }
+        }
+
+        function processExcelData(rawRows) {
+            // Highly robust normalized mapping to search matches inside keys seamlessly
+            sourceData = rawRows.map(row => {
+                const findVal = (synonyms) => {
+                    for (let synonym of synonyms) {
+                        const normalizedSynonym = synonym.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const foundKey = Object.keys(row).find(k => {
+                            const normalizedKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            return normalizedKey === normalizedSynonym;
+                        });
+                        if (foundKey !== undefined) return row[foundKey];
+                    }
+                    return "";
+                };
+
+                return {
+                    trackingId: findVal(["Tracking ID", "trackingId", "TrackingID", "id_rastreamento", "id"]),
+                    station: findVal(["Station", "station", "Node", "estação", "posto", "estacao"]),
+                    customer: findVal(["Customer", "customer", "cliente"]),
+                    daId: findVal(["Da ID", "daId", "id_motorista", "da_id"]),
+                    daName: findVal(["Da Name", "daName", "nome_motorista", "motorista", "da_name"]),
+                    value: Number(findVal(["Value", "value", "Valor", "custo", "preco", "preço"])) || 0,
+                    deliveryDate: findVal(["Delivery Date", "deliveryDate", "Data_Entrega", "Data Entrega", "data_entrega", "data"]),
+                    concessionDate: findVal(["Concession Date", "concessionDate", "data_concessao"]),
+                    wk: findVal(["WK", "wk", "Semana", "semana"]),
+                    month: findVal(["Month", "month", "Mês", "mes"]),
+                    informVendor: findVal(["Inform Vendor", "informVendor", "notificar_fornecedor", "fornecedor"]),
+                    reason: findVal(["Reason", "reason", "Motivo", "motivo"]),
+                    finalReason: findVal(["Final Reason", "finalReason", "motivo_final"]),
+                    geo: findVal(["GEO", "geo", "regiao", "região"])
+                };
+            });
+
+            // Toggle empty state visibility off
+            document.getElementById('empty-state-container').classList.add('hidden');
+            
+            // Reset active sorting index and columns list
+            timelineSortColumnKey = '';
+            
+            // Build the complete available weeks structure dynamically from the imported file
+            const targetWeeks = buildTimelineWeeksStructure();
+
+            // Setup default visible active columns: Last 2 weeks of 2025 + Last 4 weeks of the operational year
+            const weeks2025 = targetWeeks.filter(w => w.year === 2025);
+            const reference2025Keys = weeks2025.slice(-2).map(w => w.key);
+
+            const otherWeeks = targetWeeks.filter(w => w.year !== 2025);
+            const last4WeeksKeys = otherWeeks.slice(-4).map(w => w.key);
+
+            // Combine for active display on load (while dropdown retains all options)
+            timelineActiveWeekKeys = [...reference2025Keys, ...last4WeeksKeys];
+
+            // Rebuild dropdown items using all targetWeeks
+            rebuildTimelineWeeksDropdown(targetWeeks);
+
+            // Rebuild dynamic global selectors options
+            rebuildFilters();
+            
+            // Run default state filter
+            applyFilters();
+            
+            // Switch view correctly based on active tab
+            switchTab(activeTab);
+        }
+
+        function rebuildFilters() {
+            const weeks = [...new Set(sourceData.map(x => x.wk).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+            const stations = [...new Set(sourceData.map(x => x.station).filter(Boolean))].sort();
+            const months = [...new Set(sourceData.map(x => x.month).filter(Boolean))];
+            
+            const monthWeights = {
+                "janeiro": 1, "january": 1, "jan": 1, "01": 1, "1": 1,
+                "fevereiro": 2, "february": 2, "fev": 2, "feb": 2, "02": 2, "2": 2,
+                "março": 3, "march": 3, "mar": 3, "03": 3, "3": 3,
+                "abril": 4, "april": 4, "abr": 4, "apr": 4, "04": 4, "4": 4,
+                "maio": 5, "may": 5, "mai": 5, "05": 5, "5": 5,
+                "junho": 6, "june": 6, "jun": 6, "06": 6, "6": 6,
+                "julho": 7, "july": 7, "jul": 7, "07": 7, "7": 7,
+                "agosto": 8, "august": 8, "ago": 8, "aug": 8, "08": 8, "8": 8,
+                "setembro": 9, "september": 9, "set": 9, "sep": 9, "09": 9, "9": 9,
+                "outubro": 10, "october": 10, "out": 10, "oct": 10, "10": 10,
+                "novembro": 11, "november": 11, "nov": 11, "11": 11,
+                "dezembro": 12, "december": 12, "dez": 12, "dec": 12, "12": 12
+            };
+
+            months.sort((a, b) => {
+                const getMonthAndYearInfo = (str) => {
+                    const cleaned = String(str).toLowerCase().trim();
+                    if (cleaned.includes('/')) {
+                        const parts = cleaned.split('/');
+                        const mWeight = monthWeights[parts[0]] || 99;
+                        const yWeight = parseInt(parts[1]) || 2026;
+                        return { monthWeight: mWeight, year: yWeight };
+                    }
+                    if (cleaned.includes('-')) {
+                        const parts = cleaned.split('-');
+                        if (parts[0].length === 4) {
+                            const mWeight = monthWeights[parts[1]] || 99;
+                            const yWeight = parseInt(parts[0]) || 2026;
+                            return { monthWeight: mWeight, year: yWeight };
+                        }
+                    }
+                    const matchSample = sourceData.find(x => String(x.month).toLowerCase().trim() === cleaned);
+                    const yr = matchSample ? getYearFromDate(matchSample.deliveryDate) : 2026;
+                    const mWeight = monthWeights[cleaned] || 99;
+                    return { monthWeight: mWeight, year: yr || 2026 };
+                };
+
+                const infoA = getMonthAndYearInfo(a);
+                const infoB = getMonthAndYearInfo(b);
+
+                if (infoA.year !== infoB.year) {
+                    return infoA.year - infoB.year;
+                }
+                return infoA.monthWeight - infoB.monthWeight;
+            });
+
+            // Populate multi-select checkbox dropdown containers
+            populateMultiSelect('wk', weeks);
+            populateMultiSelect('month', months);
+            populateMultiSelect('station', stations);
+        }
+
+        function populateMultiSelect(key, list) {
+            const optionsContainer = document.getElementById(`options-${key}`);
+            optionsContainer.innerHTML = '';
+            
+            // Default to having all items checked on load
+            selectedFilters[key] = list.map(x => String(x));
+            updateDropdownLabel(key);
+
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2 px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded cursor-pointer transition select-none";
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = true;
+                checkbox.value = String(item);
+                checkbox.className = "rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5";
+                
+                checkbox.onchange = (e) => {
+                    const val = String(item);
+                    if (e.target.checked) {
+                        if (!selectedFilters[key].includes(val)) selectedFilters[key].push(val);
+                    } else {
+                        selectedFilters[key] = selectedFilters[key].filter(x => x !== val);
+                    }
+                    updateDropdownLabel(key);
+                    applyFilters();
+                };
+
+                const label = document.createElement('label');
+                label.className = "flex-grow select-none cursor-pointer text-slate-700 dark:text-slate-300 font-medium";
+                label.innerText = item;
+                
+                div.onclick = (e) => {
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change'));
+                    }
+                };
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                optionsContainer.appendChild(div);
+            });
+        }
+
+        function selectAll(key, checkAll) {
+            const container = document.getElementById(`options-${key}`);
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            
+            selectedFilters[key] = [];
+            checkboxes.forEach(cb => {
+                cb.checked = checkAll;
+                if (checkAll) {
+                    selectedFilters[key].push(cb.value);
+                }
+            });
+            updateDropdownLabel(key);
+            applyFilters();
+        }
+
+        function updateDropdownLabel(key) {
+            const labelSpan = document.getElementById(`label-${key}`);
+            const totalOptions = document.getElementById(`options-${key}`).querySelectorAll('input[type="checkbox"]').length;
+            const selectedCount = selectedFilters[key].length;
+
+            if (selectedCount === 0) {
+                labelSpan.innerText = "Nenhum selecionado";
+                labelSpan.className = 'text-slate-400 font-medium';
+            } else if (selectedCount === totalOptions) {
+                labelSpan.innerText = "Todos selecionados";
+                labelSpan.className = 'text-slate-700 dark:text-slate-300 font-medium';
+            } else {
+                labelSpan.innerText = `${selectedCount} selecionado(s)`;
+                labelSpan.className = 'text-[#FF9900] font-bold';
+            }
+        }
+
+        function clearFilters() {
+            ['wk', 'month', 'station'].forEach(key => {
+                selectAll(key, true);
+            });
+        }
+
+        function clearSystem() {
+            // Nullify data models
+            sourceData = [];
+            filteredData = [];
+            timelineSortColumnKey = '';
+            timelineActiveWeekKeys = [];
+            
+            selectedFilters = {
+                wk: [],
+                month: [],
+                station: []
+            };
+
+            // Destroy Charts instances cleanly to prevent lingering memory/views
+            if (chartInstances.dnrTdge) chartInstances.dnrTdge.destroy();
+            if (chartInstances.responsabilidade) chartInstances.responsabilidade.destroy();
+            if (chartInstances.motivos) chartInstances.motivos.destroy();
+            if (chartInstances.weekView) chartInstances.weekView.destroy();
+            chartInstances = {};
+
+            // Reset File input
+            document.getElementById('excelFile').value = '';
+
+            // Clean UI indicators
+            document.getElementById('metric-trackings').innerText = "0";
+            document.getElementById('metric-value').innerText = "R$ 0,00";
+            document.getElementById('metric-reasons').innerText = "0";
+            document.getElementById('metric-stations').innerText = "0";
+            document.getElementById('daSearchInput').value = "";
+
+            // Reset Select filter options
+            document.getElementById('options-wk').innerHTML = '';
+            document.getElementById('options-month').innerHTML = '';
+            document.getElementById('options-station').innerHTML = '';
+            
+            document.getElementById('label-wk').innerText = "Todos";
+            document.getElementById('label-month').innerText = "Todos";
+            document.getElementById('label-station').innerText = "Todos";
+
+            // Restore Status Bar using safe guards
+            setLoadingState(false, "Aguardando importação...");
+            
+            const statusDot = document.getElementById('statusDot');
+            if (statusDot) statusDot.className = "w-2.5 h-2.5 rounded-full bg-slate-400";
+            const statusMetrics = document.getElementById('statusMetrics');
+            if (statusMetrics) statusMetrics.innerText = "";
+
+            // Toggle layout to show empty state
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-timeline').classList.add('hidden');
+            document.getElementById('empty-state-container').classList.remove('hidden');
+        }
+
+        function applyFilters() {
+            if (sourceData.length === 0) return;
+
+            filteredData = sourceData.filter(item => {
+                const matchWk = selectedFilters.wk.includes(String(item.wk));
+                const matchMonth = selectedFilters.month.includes(String(item.month));
+                const matchStation = selectedFilters.station.includes(String(item.station));
+                return matchWk && matchMonth && matchStation;
+            });
+
+            // Update simple cards metrics
+            updateIndicatorCards();
+
+            // Refresh dashboards visualizer if dashboard tab is active
+            if (activeTab === 'dashboard') {
+                updateCharts();
+            } else {
+                renderTimelineTable();
+            }
+        }
+
+        function updateIndicatorCards() {
+            const totalTrackings = filteredData.length;
+            const totalValue = filteredData.reduce((acc, curr) => acc + curr.value, 0);
+            
+            // Count unique items based strictly on column M final reason values matching target
+            let finalReasonMatchCount = 0;
+            filteredData.forEach(item => {
+                const r = String(item.finalReason || "").toLowerCase().trim();
+                if (r.includes("indevida") || r.includes("aguardando") || r.includes("devida")) {
+                    finalReasonMatchCount++;
+                }
+            });
+
+            const uniqueStations = [...new Set(filteredData.map(x => x.station).filter(Boolean))].length;
+
+            document.getElementById('metric-trackings').innerText = totalTrackings.toLocaleString('pt-BR');
+            document.getElementById('metric-value').innerText = totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('metric-reasons').innerText = finalReasonMatchCount.toLocaleString('pt-BR');
+            document.getElementById('metric-stations').innerText = uniqueStations;
+
+            // Update header info text dynamically without showing line numbers directly
+            const statusText = document.getElementById('statusText');
+            if (statusText) statusText.innerText = "Dados integrados com sucesso.";
+            const statusMetrics = document.getElementById('statusMetrics');
+            if (statusMetrics) statusMetrics.innerText = "";
+        }
+
+        function updateCharts() {
+            if (sourceData.length === 0) return;
+
+            if (chartInstances.dnrTdge) chartInstances.dnrTdge.destroy();
+            if (chartInstances.responsabilidade) chartInstances.responsabilidade.destroy();
+            if (chartInstances.motivos) chartInstances.motivos.destroy();
+            if (chartInstances.weekView) chartInstances.weekView.destroy();
+
+            renderDnrTdgeChart();
+            renderResponsabilidadeChart();
+            renderMotivosChart();
+            renderWeekViewChart();
+        }
+
+        function renderDnrTdgeChart() {
+            const colors = getThemeColors();
+            const stationMap = {};
+            filteredData.forEach(item => {
+                const node = item.station || 'Não Mapeado';
+                if (!stationMap[node]) {
+                    stationMap[node] = { totalValue: 0, trackingCount: 0 };
+                }
+                stationMap[node].totalValue += item.value;
+                stationMap[node].trackingCount += 1;
+            });
+
+            const dnrTdge = Object.keys(stationMap).map(station => ({
+                station: station,
+                totalValue: stationMap[station].totalValue,
+                trackingCount: stationMap[station].trackingCount
+            })).sort((a, b) => b.totalValue - a.totalValue);
+
+            const labels = dnrTdge.map(x => x.station);
+            const values = dnrTdge.map(x => x.totalValue);
+            const counts = dnrTdge.map(x => x.trackingCount);
+
+            const ctx = document.getElementById('chartDnrTdge').getContext('2d');
+            chartInstances.dnrTdge = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Soma de Valor (R$)',
+                            data: values,
+                            backgroundColor: 'rgba(36, 48, 72, 0.75)',
+                            borderColor: '#243048',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            yAxisID: 'yValues',
+                            order: 2,
+                            datalabels: {
+                                display: false
+                            }
+                        },
+                        {
+                            label: 'Contagem de Ocorrências (Linha)',
+                            data: counts,
+                            type: 'line',
+                            borderColor: '#FF9900',
+                            backgroundColor: '#FF9900',
+                            borderWidth: 3.5,
+                            pointBackgroundColor: '#FF9900',
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            tension: 0.25,
+                            yAxisID: 'yCounts',
+                            order: 1,
+                            datalabels: {
+                                display: true,
+                                align: 'top',
+                                anchor: 'end',
+                                backgroundColor: '#FF9900',
+                                borderRadius: 4,
+                                color: '#131921',
+                                font: {
+                                    weight: 'bold',
+                                    size: 11
+                                },
+                                padding: { top: 4, bottom: 4, left: 6, right: 6 }
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 24
+                        }
+                    },
+                    // Interactive bar clicking logic to filter other charts
+                    onClick: (event, elements, chart) => {
+                        if (elements && elements.length > 0) {
+                            const firstElement = elements[0];
+                            const stationLabel = chart.data.labels[firstElement.index];
+                            
+                            // Check if only this station is already selected to toggle reset
+                            if (selectedFilters.station.length === 1 && selectedFilters.station[0] === String(stationLabel)) {
+                                // Reset to show all active stations
+                                const allStations = [...new Set(sourceData.map(x => x.station).filter(Boolean))].sort();
+                                selectedFilters.station = allStations.map(x => String(x));
+                                
+                                const container = document.getElementById('options-station');
+                                if (container) {
+                                    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                                        cb.checked = true;
+                                    });
+                                }
+                            } else {
+                                // Filter exclusively by the clicked station/node
+                                selectedFilters.station = [String(stationLabel)];
+                                
+                                const container = document.getElementById('options-station');
+                                if (container) {
+                                    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+                                    checkboxes.forEach(cb => {
+                                        cb.checked = (cb.value === String(stationLabel));
+                                    });
+                                }
+                            }
+                            updateDropdownLabel('station');
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom', 
+                            align: 'center',
+                            labels: { boxWidth: 12, color: colors.text, font: { size: 11, weight: 'semibold' } } 
+                        },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.axisText }
+                        },
+                        yValues: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: {
+                                color: colors.axisText,
+                                callback: (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+                            },
+                            grid: { color: colors.grid }
+                        },
+                        yCounts: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: colors.axisText },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderResponsabilidadeChart() {
+            const colors = getThemeColors();
+            const reasonMap = {
+                "Indevida": 0,
+                "Aguardando Análise": 0,
+                "Devida": 0
+            };
+
+            filteredData.forEach(item => {
+                const r = String(item.finalReason || "").toLowerCase().trim();
+                if (r.includes("indevida")) {
+                    reasonMap["Indevida"]++;
+                } else if (r.includes("aguardando")) {
+                    reasonMap["Aguardando Análise"]++;
+                } else if (r.includes("devida")) {
+                    reasonMap["Devida"]++;
+                }
+            });
+
+            const labels = Object.keys(reasonMap);
+            const values = Object.values(reasonMap);
+
+            const wedgeColors = [
+                '#ef4444', // Red for Indevida
+                '#FF9900', // Amazon Orange for Aguardando
+                '#10b981'  // Emerald for Devida
+            ];
+
+            const ctx = document.getElementById('chartResponsabilidade').getContext('2d');
+            chartInstances.responsabilidade = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: wedgeColors,
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            align: 'center',
+                            labels: {
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const val = data.datasets[0].data[i];
+                                            return {
+                                                text: `${label}: ${val}`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: data.datasets[0].backgroundColor[i],
+                                                lineWidth: 0,
+                                                index: i,
+                                                fontColor: colors.text
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                },
+                                boxWidth: 12,
+                                font: { size: 11, weight: 'semibold' },
+                                padding: 14,
+                                color: colors.text
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#131921',
+                            font: {
+                                weight: 'extrabold',
+                                size: 12
+                            },
+                            formatter: (value) => value
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        function renderMotivosChart() {
+            const colors = getThemeColors();
+            const reasonMap = {};
+            filteredData.forEach(item => {
+                const r = item.reason || 'Outros';
+                if (!reasonMap[r]) {
+                    reasonMap[r] = { value: 0, count: 0 };
+                }
+                reasonMap[r].value += item.value;
+                reasonMap[r].count += 1;
+            });
+
+            const sortedMotivos = Object.keys(reasonMap).map(r => ({
+                reason: r,
+                value: reasonMap[r].value,
+                count: reasonMap[r].count
+            })).sort((a,b) => b.value - a.value);
+
+            const labels = sortedMotivos.map(x => x.reason);
+            const values = sortedMotivos.map(x => x.value);
+            const counts = sortedMotivos.map(x => x.count);
+
+            const ctx = document.getElementById('chartMotivos').getContext('2d');
+            chartInstances.motivos = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Soma de Valor (R$)',
+                            data: values,
+                            backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                            borderRadius: 6,
+                            yAxisID: 'yLeft',
+                            order: 2,
+                            datalabels: {
+                                display: false // Numbers hidden on Soma de Valor
+                            }
+                        },
+                        {
+                            label: 'COUNT Ocorrências',
+                            data: counts,
+                            type: 'line',
+                            borderColor: '#FF9900',
+                            backgroundColor: '#FF9900',
+                            borderWidth: 2.5,
+                            fill: false,
+                            tension: 0.2,
+                            yAxisID: 'yRight',
+                            order: 1,
+                            // Numbers visible ONLY on COUNT Ocorrencias
+                            datalabels: {
+                                display: true,
+                                align: 'top',
+                                anchor: 'end',
+                                backgroundColor: '#FF9900',
+                                borderRadius: 4,
+                                color: '#131921',
+                                font: {
+                                    weight: 'bold',
+                                    size: 10
+                                },
+                                padding: { top: 3, bottom: 3, left: 5, right: 5 }
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 24
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom', 
+                            align: 'center',
+                            labels: { boxWidth: 10, font: { size: 10 }, color: colors.text } 
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.axisText }
+                        },
+                        yLeft: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { 
+                                color: colors.axisText,
+                                callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') 
+                            },
+                            grid: { color: colors.grid }
+                        },
+                        yRight: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: colors.axisText },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderWeekViewChart() {
+            const colors = getThemeColors();
+            const wkMap = {};
+            filteredData.forEach(item => {
+                const wk = Number(item.wk);
+                if (isNaN(wk)) return;
+                if (!wkMap[wk]) {
+                    wkMap[wk] = { value: 0, count: 0 };
+                }
+                wkMap[wk].value += item.value;
+                wkMap[wk].count += 1;
+            });
+
+            const sortedWks = Object.keys(wkMap).map(wk => Number(wk)).sort((a,b) => a - b);
+            
+            const labels = sortedWks.map(wk => `WK${wk}`);
+            const values = sortedWks.map(wk => wkMap[wk].value);
+            const counts = sortedWks.map(wk => wkMap[wk].count);
+
+            const ctx = document.getElementById('chartWeekView').getContext('2d');
+            chartInstances.weekView = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Soma de Valor (R$)',
+                            data: values,
+                            backgroundColor: 'rgba(245, 158, 11, 0.75)',
+                            borderRadius: 6,
+                            yAxisID: 'yVal',
+                            order: 2,
+                            datalabels: {
+                                display: false
+                            }
+                        },
+                        {
+                            label: 'Qtd Ocorrências',
+                            data: counts,
+                            type: 'line',
+                            // Distinct purple line providing strong visual contrast
+                            borderColor: '#7c3aed',
+                            backgroundColor: '#7c3aed',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#7c3aed',
+                            pointRadius: 6,
+                            tension: 0.15,
+                            yAxisID: 'yCnt',
+                            order: 1,
+                            datalabels: {
+                                display: true,
+                                align: 'top',
+                                anchor: 'end',
+                                backgroundColor: '#7c3aed',
+                                borderRadius: 4,
+                                color: '#ffffff',
+                                font: {
+                                    weight: 'bold',
+                                    size: 11
+                                },
+                                padding: { top: 4, bottom: 4, left: 6, right: 6 }
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 24
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom', 
+                            align: 'center',
+                            labels: { boxWidth: 10, font: { size: 10 }, color: colors.text } 
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.axisText }
+                        },
+                        yVal: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { 
+                                color: colors.axisText,
+                                callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') 
+                            },
+                            grid: { color: colors.grid }
+                        },
+                        yCnt: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: colors.axisText },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        function getHeatmapColorClass(value) {
+            if (value === 0 || !value) return 'bg-[#eaeaea] text-gray-400';
+            if (value <= 5) return 'bg-[#d1fae5] text-emerald-800 font-semibold';
+            if (value <= 15) return 'bg-[#fef08a] text-yellow-800 font-semibold';
+            if (value <= 30) return 'bg-[#fed7aa] text-orange-800 font-semibold';
+            return 'bg-[#fee2e2] text-red-800 font-bold';
+        }
+
+        // Logic to dynamically structure weeks columns
+        function buildTimelineWeeksStructure() {
+            if (sourceData.length === 0) return [];
+
+            // Compile weeks structure mapping from any column year dynamically
+            const allWeeksMapped = [];
+            const seenKeys = new Set();
+
+            sourceData.forEach(row => {
+                const wk = Number(row.wk);
+                if (isNaN(wk)) return;
+                const yr = getYearFromDate(row.deliveryDate) || 2026;
+                const key = yr === 2025 ? `WK${wk}_2025` : `WK${wk}`;
+                const label = yr === 2025 ? `WK${wk}/2025` : `WK${wk}`;
+                
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    allWeeksMapped.push({
+                        wk: wk,
+                        year: yr,
+                        key: key,
+                        label: label
+                    });
+                }
+            });
+
+            // Sort mapped weeks chronologically
+            allWeeksMapped.sort((a, b) => {
+                if (a.year !== b.year) return a.year - b.year;
+                return a.wk - b.wk;
+            });
+
+            return allWeeksMapped;
+        }
+
+        // Populate timeline specific active columns checkboxes selector
+        function rebuildTimelineWeeksDropdown(targetWeeks) {
+            const container = document.getElementById('timeline-weeks-checkboxes');
+            container.innerHTML = '';
+            
+            targetWeeks.forEach(tw => {
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2 px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 rounded cursor-pointer transition select-none";
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = timelineActiveWeekKeys.includes(tw.key);
+                cb.value = tw.key;
+                cb.className = "rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5";
+                
+                cb.onchange = (e) => {
+                    if (e.target.checked) {
+                        if (!timelineActiveWeekKeys.includes(tw.key)) timelineActiveWeekKeys.push(tw.key);
+                    } else {
+                        timelineActiveWeekKeys = timelineActiveWeekKeys.filter(x => x !== tw.key);
+                    }
+                    renderTimelineTable();
+                };
+                
+                const label = document.createElement('label');
+                label.className = "flex-grow select-none cursor-pointer font-medium text-slate-700 dark:text-slate-300";
+                label.innerText = tw.label;
+                
+                div.onclick = (e) => {
+                    if (e.target !== cb) {
+                        cb.checked = !cb.checked;
+                        cb.dispatchEvent(new Event('change'));
+                    }
+                };
+                
+                div.appendChild(cb);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        function toggleAllTimelineWeeks(checkAll) {
+            const targetWeeks = buildTimelineWeeksStructure();
+            const container = document.getElementById('timeline-weeks-checkboxes');
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            
+            timelineActiveWeekKeys = [];
+            checkboxes.forEach(cb => {
+                cb.checked = checkAll;
+                if (checkAll) {
+                    timelineActiveWeekKeys.push(cb.value);
+                }
+            });
+            renderTimelineTable();
+        }
+
+        // Toggle Table Column Sort by clicking Week Headers
+        function sortTimelineByWeek(weekKey) {
+            timelineSortColumnKey = weekKey;
+            renderTimelineTable();
+        }
+
+        // Auxiliary function to process calculations of the Offenders Matrix
+        function getOffendersData() {
+            const targetWeeks = buildTimelineWeeksStructure();
+            const offenderMap = {};
+
+            sourceData.forEach(item => {
+                const name = item.daName || "Não Informado";
+                const id = item.daId || "S/ID";
+                const station = item.station || "S/ST";
+                const rowKey = `${name}|||${id}|||${station}`;
+
+                if (!offenderMap[rowKey]) {
+                    offenderMap[rowKey] = {
+                        daName: name,
+                        daId: id,
+                        station: station,
+                        counts: {},
+                        rowTotal: 0
+                    };
+                }
+
+                const yr = getYearFromDate(item.deliveryDate);
+                const itemWkNum = Number(item.wk);
+
+                targetWeeks.forEach(tw => {
+                    if (tw.year === 2025) {
+                        if (yr === 2025 && itemWkNum === tw.wk) {
+                            offenderMap[rowKey].counts[tw.key] = (offenderMap[rowKey].counts[tw.key] || 0) + 1;
+                            offenderMap[rowKey].rowTotal++;
+                        }
+                    } else {
+                        if (yr !== 2025 && itemWkNum === tw.wk) {
+                            offenderMap[rowKey].counts[tw.key] = (offenderMap[rowKey].counts[tw.key] || 0) + 1;
+                            offenderMap[rowKey].rowTotal++;
+                        }
+                    }
+                });
+            });
+
+            return { targetWeeks, list: Object.values(offenderMap) };
+        }
+
+        function renderTimelineTable() {
+            const tbody = document.getElementById('timelineBody');
+            const theadRow = document.getElementById('timelineHeaderRow');
+            const tfoot = document.getElementById('timelineFooter');
+            const searchVal = document.getElementById('daSearchInput').value.toLowerCase().trim();
+
+            if (sourceData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-500">Aguardando importação para popular a tabela...</td></tr>';
+                return;
+            }
+
+            const { targetWeeks, list } = getOffendersData();
+            
+            // Filter targets based on user weeks column multi-select
+            const activeTargetWeeks = targetWeeks.filter(w => timelineActiveWeekKeys.includes(w.key));
+            let timelineRows = [...list];
+
+            // Verify if active sort key is valid or default to the latest week available
+            const activeKeys = activeTargetWeeks.map(w => w.key);
+            if (!timelineSortColumnKey || (!activeKeys.includes(timelineSortColumnKey) && timelineSortColumnKey !== 'TotalGeral')) {
+                timelineSortColumnKey = activeTargetWeeks.length > 0 ? activeTargetWeeks[activeTargetWeeks.length - 1].key : 'TotalGeral';
+            }
+
+            // Build Header column strings with interactable week sorting click listeners
+            let headerHtml = `
+                <th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width: 180px;">DA Name</th>
+                <th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th>
+                <th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th>
+            `;
+            
+            activeTargetWeeks.forEach(w => {
+                const isSelected = timelineSortColumnKey === w.key;
+                const indicator = isSelected ? ' <span class="text-[#FF9900]">▼</span>' : ' <span class="text-slate-500 text-[9px]">↕</span>';
+                headerHtml += `
+                    <th onclick="sortTimelineByWeek('${w.key}')" 
+                        class="p-3 text-center bg-[#131921] border-b border-slate-700 text-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-800 hover:text-white transition select-none ${isSelected ? 'ring-2 ring-[#FF9900] ring-inset' : ''}"
+                        title="Ordenar do maior para o menor por esta coluna">
+                        ${w.label}${indicator}
+                    </th>`;
+            });
+            
+            const isTotalActive = timelineSortColumnKey === 'TotalGeral';
+            headerHtml += `
+                <th onclick="sortTimelineByWeek('TotalGeral')" 
+                    class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTotalActive ? 'ring-2 ring-[#FF9900] ring-inset' : ''}">
+                    Total Geral${isTotalActive ? ' <span class="text-[#FF9900]">▼</span>' : ' <span class="text-slate-400 text-[9px]">↕</span>'}
+                </th>`;
+            theadRow.innerHTML = headerHtml;
+
+            // Apply search filter matching query
+            if (searchVal) {
+                timelineRows = timelineRows.filter(row => 
+                    row.daName.toLowerCase().includes(searchVal) || 
+                    String(row.daId).toLowerCase().includes(searchVal)
+                );
+            }
+
+            // Recalculate dynamic row total based strictly on active columns
+            timelineRows.forEach(row => {
+                let dynamicRowTotal = 0;
+                activeTargetWeeks.forEach(w => {
+                    dynamicRowTotal += (row.counts[w.key] || 0);
+                });
+                row.currentViewTotal = dynamicRowTotal;
+            });
+
+            // Sort logic based on dynamic selected column
+            if (timelineSortColumnKey === 'TotalGeral') {
+                timelineRows.sort((a, b) => b.currentViewTotal - a.currentViewTotal);
+            } else if (timelineSortColumnKey) {
+                timelineRows.sort((a, b) => {
+                    const valA = a.counts[timelineSortColumnKey] || 0;
+                    const valB = b.counts[timelineSortColumnKey] || 0;
+                    return valB - valA;
+                });
+            }
+
+            // Construct content table visual nodes
+            let bodyHtml = "";
+            let columnTotals = {};
+            activeTargetWeeks.forEach(w => columnTotals[w.key] = 0);
+            let grandTotal = 0;
+
+            const isDark = document.body.classList.contains('dark');
+            const rowBaseBg = isDark ? 'bg-[#161e2e]' : 'bg-white';
+            const rowZebraBg = isDark ? 'bg-[#1b2537]' : 'bg-slate-50';
+
+            timelineRows.forEach((row, index) => {
+                const zebraClass = index % 2 === 0 ? rowBaseBg : rowZebraBg;
+                
+                bodyHtml += `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800 ${zebraClass} transition">`;
+                bodyHtml += `<td class="p-2.5 font-medium text-slate-800 border-b border-slate-200 sticky-col ${zebraClass} truncate max-w-[200px]" title="${row.daName}">${row.daName}</td>`;
+                bodyHtml += `<td class="p-2.5 text-slate-500 border-b border-slate-200">${row.daId}</td>`;
+                bodyHtml += `<td class="p-2.5 font-semibold text-slate-600 border-b border-slate-200">${row.station}</td>`;
+
+                activeTargetWeeks.forEach(w => {
+                    const val = row.counts[w.key] || 0;
+                    columnTotals[w.key] += val;
+                    const cellColor = getHeatmapColorClass(val);
+                    bodyHtml += `<td class="p-2.5 text-center border border-slate-200 ${cellColor}">${val === 0 ? '0' : val}</td>`;
+                });
+
+                bodyHtml += `<td class="p-2.5 text-center font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-800 border-b border-slate-200">${row.currentViewTotal}</td>`;
+                bodyHtml += `</tr>`;
+                grandTotal += row.currentViewTotal;
+            });
+
+            if (timelineRows.length === 0) {
+                bodyHtml = `<tr><td colspan="${activeTargetWeeks.length + 4}" class="p-8 text-center text-slate-400 font-semibold">Nenhum DA correspondente encontrado.</td></tr>`;
+            }
+
+            tbody.innerHTML = bodyHtml;
+
+            // Generate overall sums footer
+            let footerHtml = `
+                <tr>
+                    <td class="p-3 sticky-col bg-slate-100 dark:bg-[#1f2937] font-bold border-t border-slate-300">Total Geral</td>
+                    <td class="p-3 bg-slate-100 dark:bg-[#1f2937] border-t border-slate-300"></td>
+                    <td class="p-3 bg-slate-100 dark:bg-[#1f2937] border-t border-slate-300"></td>
+            `;
+            activeTargetWeeks.forEach(w => {
+                const sum = columnTotals[w.key];
+                footerHtml += `<td class="p-3 text-center bg-slate-100 dark:bg-[#1f2937] border-t border-slate-300 text-slate-900 font-extrabold">${sum}</td>`;
+            });
+            footerHtml += `<td class="p-3 text-center bg-amber-100 dark:bg-amber-950 text-slate-900 dark:text-amber-100 border-t border-slate-300 font-black">${grandTotal}</td>`;
+            footerHtml += `</tr>`;
+
+            tfoot.innerHTML = footerHtml;
+        }
+
+        // Export active Pivot Matrix back to high fidelity Excel Worksheet (respecting active filter columns)
+        function exportTimelineToExcel() {
+            if (sourceData.length === 0) return;
+
+            const { targetWeeks, list } = getOffendersData();
+            const activeTargetWeeks = targetWeeks.filter(w => timelineActiveWeekKeys.includes(w.key));
+            
+            // Build the standard Row Matrix to process with XLSX
+            const headers = ["DA Name", "DA ID", "Station"];
+            activeTargetWeeks.forEach(w => {
+                headers.push(w.label);
+            });
+            headers.push("Total Geral");
+
+            const excelRows = [headers];
+
+            // Populate DA Row list sorted by selected sort column
+            let timelineRows = [...list];
+            
+            timelineRows.forEach(row => {
+                let dynamicRowTotal = 0;
+                activeTargetWeeks.forEach(w => {
+                    dynamicRowTotal += (row.counts[w.key] || 0);
+                });
+                row.currentViewTotal = dynamicRowTotal;
+            });
+
+            if (timelineSortColumnKey === 'TotalGeral') {
+                timelineRows.sort((a, b) => b.currentViewTotal - a.currentViewTotal);
+            } else if (timelineSortColumnKey) {
+                timelineRows.sort((a, b) => {
+                    const valA = a.counts[timelineSortColumnKey] || 0;
+                    const valB = b.counts[timelineSortColumnKey] || 0;
+                    return valB - valA;
+                });
+            }
+
+            let columnTotals = {};
+            activeTargetWeeks.forEach(w => columnTotals[w.key] = 0);
+            let grandTotal = 0;
+
+            timelineRows.forEach(row => {
+                const itemRow = [row.daName, row.daId, row.station];
+                activeTargetWeeks.forEach(w => {
+                    const val = row.counts[w.key] || 0;
+                    columnTotals[w.key] += val;
+                    itemRow.push(val);
+                });
+                itemRow.push(row.currentViewTotal);
+                grandTotal += row.currentViewTotal;
+                excelRows.push(itemRow);
+            });
+
+            // Add sum total row to sheet footer
+            const footerRow = ["Total Geral", "", ""];
+            activeTargetWeeks.forEach(w => {
+                footerRow.push(columnTotals[w.key]);
+            });
+            footerRow.push(grandTotal);
+            excelRows.push(footerRow);
+
+            // Convert and trigger client-side download
+            try {
+                const ws = XLSX.utils.aoa_to_sheet(excelRows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Timeline DA");
+                
+                // Write standard Excel document
+                XLSX.writeFile(wb, `Timeline_DAs_Ofensores_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao exportar arquivo", err);
+            }
+        }
+
+        // Keep system initial clean state on load
+        window.onload = function() {
+            clearSystem();
+        };
+
+    </script>
+</body>
+</html>
