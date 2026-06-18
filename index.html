@@ -1055,7 +1055,7 @@ function exportTimelineDetails(){
     if (details.length === 0) { alert('Nenhum registro encontrado com os filtros atuais.'); return; }
 
     // Build export rows
-    const headers = ["Tracking ID", "DA Name", "DA ID", "Station", "WK", "Month", "Delivery Date", "Concession Date", "Value", "Reason", "Inform Vendor"];
+    const headers = ["Tracking ID", "DA Name", "DA ID", "Station", "WK", "Month", "Delivery Date", "Concession Date", "Value", "Reason", "Final Reason", "Inform Vendor"];
     const rows = [headers];
     details.forEach(item => {
         rows.push([
@@ -1069,6 +1069,7 @@ function exportTimelineDetails(){
             item.concessionDate || '',
             item.value || 0,
             item.reason || '',
+            item.finalReason || '',
             item.informVendor || ''
         ]);
     });
@@ -1259,10 +1260,8 @@ function renderDpmoSemanal() {
             });
         }
         const sortIcon = (h) => dpmoSortState.table === 'dpmoSemanal' && dpmoSortState.column === h ? (dpmoSortState.direction === 'desc' ? ' ▼' : ' ▲') : '';
-        const lastHeader = calcHeaders[calcHeaders.length - 1];
-        let th = calcHeaders.map(h => {
-            return `<th class="p-2 text-left cursor-pointer hover:text-[#FF9900] select-none" onclick="sortDpmoTable('dpmoSemanal','${calcHeaders.indexOf(h)}','${h}')">${h}${sortIcon(h)}</th>`;
-        }).join('');
+        const lastWkHeader = calcHeaders[calcHeaders.length - 1];
+        let th = calcHeaders.map(h => `<th class="p-2 text-left cursor-pointer hover:text-[#FF9900] select-none" onclick="sortDpmoTable('dpmoSemanal','${calcHeaders.indexOf(h)}','${h}')">${h}${sortIcon(h)}</th>`).join('');
         document.getElementById('dpmoSemanalHeader').innerHTML = th;
         let tb = '';
         calcRows.forEach(r => {
@@ -1270,12 +1269,11 @@ function renderDpmoSemanal() {
             calcHeaders.forEach((h, i) => {
                 const val = r[h];
                 const num = Number(val);
-                const isLastWk = (h === lastHeader && /wk/i.test(h));
+                const isLastWk = (h === lastWkHeader && /wk/i.test(h));
                 if (i === 0) tb += `<td class="p-2 font-semibold">${val}</td>`;
                 else if (isLastWk) {
                     const rounded = Math.round(num) || 0;
-                    const color = getDpmoHeatmapColor(rounded, target);
-                    tb += `<td class="p-2 text-center font-bold ${color}">${rounded.toLocaleString('pt-BR')}</td>`;
+                    tb += `<td class="p-2 text-center font-bold ${getDpmoHeatmapColor(rounded, target)}">${rounded.toLocaleString('pt-BR')}</td>`;
                 }
                 else tb += `<td class="p-2 text-center">${!isNaN(num) ? Math.round(num).toLocaleString('pt-BR') : val}</td>`;
             });
@@ -1410,7 +1408,6 @@ function renderDpmoMensal() {
         perfRows.sort((a,b) => {
             let av, bv;
             if (col === 'Média Geral' || !col || !a[col]) {
-                // Sort by computed average
                 const aVals = monthKeys.map(m => Number(a[m])||0).filter(v=>v>0);
                 const bVals = monthKeys.map(m => Number(b[m])||0).filter(v=>v>0);
                 av = aVals.length > 0 ? aVals.reduce((s,v)=>s+v,0)/aVals.length : 0;
@@ -1430,8 +1427,7 @@ function renderDpmoMensal() {
             const val = r[h]; const num = Number(val);
             if (h === nodeKey) perfTb += `<td class="p-2 font-semibold">${val}</td>`;
             else if (h === 'Target' || h === targetKey) perfTb += `<td class="p-2 text-center">${target}</td>`;
-            else if (h === mxmKey) {
-                // Calculate average DPMO of all months for this node
+            else if (h === mxmKey && mxmKey) {
                 const monthVals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
                 const avgDpmo = monthVals.length > 0 ? Math.round(monthVals.reduce((a,b)=>a+b,0) / monthVals.length) : 0;
                 const color = getDpmoHeatmapColor(avgDpmo, target);
@@ -1442,7 +1438,7 @@ function renderDpmoMensal() {
                 perfTb += `<td class="p-2 text-center ${color}">${rounded > 0 ? rounded.toLocaleString('pt-BR') : '—'}</td>`;
             }
         });
-        // Always add Média Geral at the end (even if mxmKey is missing)
+        // Always add Média Geral at the end if mxmKey is missing
         if (!mxmKey) {
             const monthVals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
             const avgDpmo = monthVals.length > 0 ? Math.round(monthVals.reduce((a,b)=>a+b,0) / monthVals.length) : 0;
@@ -1478,49 +1474,50 @@ function renderDpmoMensal() {
             scales: { x: { grid: { display: false }, ticks: { color: colors.axisText } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
         }
     });
-
-    // DPMO Mensal por Node (bar chart - média geral por node)
-    if (chartInstances.dpmoMensalNode) chartInstances.dpmoMensalNode.destroy();
-    const nodeAvgs = filtered.map(r => {
-        const vals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
-        const avg = vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
-        return { node: r[nodeKey], avg };
-    }).filter(d => d.avg > 0).sort((a,b) => b.avg - a.avg);
-
-    const ctxNode = document.getElementById('chartDpmoMensalNode').getContext('2d');
-    chartInstances.dpmoMensalNode = new Chart(ctxNode, {
-        type: 'bar',
-        data: {
-            labels: nodeAvgs.map(d => d.node),
-            datasets: [{
-                label: 'Média DPMO Mensal',
-                data: nodeAvgs.map(d => d.avg),
-                backgroundColor: nodeAvgs.map(d => d.avg <= target ? '#10b981' : '#1e3a5f'),
-                borderRadius: 4,
-                datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 10 }, formatter: v => Math.round(v).toLocaleString('pt-BR') }
-            },
-            {
-                label: 'Target',
-                data: nodeAvgs.map(() => target),
-                type: 'line',
-                borderColor: '#ef4444',
-                borderWidth: 2,
-                borderDash: [6,4],
-                pointRadius: 0,
-                fill: false,
-                datalabels: { display: false }
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, layout: { padding: { top: 30 } },
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: colors.text } } },
-            scales: { x: { grid: { display: false }, ticks: { color: colors.axisText, font: { size: 9 } } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
-        }
-    });
 }
 
 function renderDpmoGeral() {
-    // Removed - TDGE Geral tab no longer exists
+    const colors = getThemeColors();
+    const target = 500;
+
+    // DPMO Mensal TDGE chart — average DPMO per month from Performance Mensal data
+    let menLabels = null, menDpmo = null;
+
+    if (dpmoMensalData.length > 0) {
+        const keys = Object.keys(dpmoMensalData[0]);
+        const nodeKey = keys.find(k => k.toLowerCase().includes('node')) || keys[0];
+        const targetKey = keys.find(k => k.toLowerCase().includes('target'));
+        const mxmKey = keys.find(k => k.toLowerCase().includes('m x m') || k.toLowerCase().includes('mxm'));
+        const monthKeys = keys.filter(k => k !== nodeKey && k !== targetKey && k !== mxmKey);
+
+        if (monthKeys.length > 0) {
+            menLabels = monthKeys;
+            menDpmo = monthKeys.map(m => {
+                const vals = dpmoMensalData.map(r => Number(r[m]) || 0).filter(v => v > 0);
+                return vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+            });
+        }
+    }
+
+    if (menLabels && menDpmo && menLabels.length > 0) {
+        if (chartInstances.dpmoTdgeMensal) chartInstances.dpmoTdgeMensal.destroy();
+        const ctx2 = document.getElementById('chartDpmoTdgeMensal').getContext('2d');
+        chartInstances.dpmoTdgeMensal = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: menLabels,
+                datasets: [
+                    { label: 'DPMO Médio', data: menDpmo, backgroundColor: '#1e3a5f', borderRadius: 6, datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 13 }, formatter: v => Math.round(v).toLocaleString('pt-BR') } },
+                    { label: 'Target', data: menLabels.map(() => target), type: 'line', borderColor: '#ef4444', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, datalabels: { display: false } }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, layout: { padding: { top: 30 } },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: colors.text, font: { size: 12 } } } },
+                scales: { x: { grid: { display: false }, ticks: { color: colors.axisText, font: { size: 12 } } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
+            }
+        });
+    }
 }
 
 // === INIT ===
