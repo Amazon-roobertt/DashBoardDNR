@@ -192,10 +192,13 @@ body.dark #timelineTable tfoot{background-color:#1f2937;color:#fff;border-top-co
 <tfoot id="timelineFooter" class="sticky bottom-0 bg-slate-100 text-slate-800 font-bold border-t border-slate-300 z-10"></tfoot>
 </table>
 </div>
+<!-- Top 20 DA Ofensores Chart -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mt-6">
+<h3 class="font-extrabold text-slate-800 text-base mb-4 text-center">Top 20 DA's Ofensores — Valor (R$)</h3>
+<div class="h-[450px] w-full relative"><canvas id="chartTopDAs"></canvas></div>
 </div>
 </div>
-
-<!-- DPMO VIEW -->
+</div>
 <div id="view-dpmo" class="hidden">
 <!-- DPMO Sub-tabs -->
 <div class="flex space-x-2 mb-6">
@@ -1013,6 +1016,61 @@ function renderTimelineTable(){
     active.forEach(w=>fh+=`<td class="p-3 text-center bg-slate-100 border-t border-slate-300 font-extrabold">${colTotals[w.key]}</td>`);
     fh+=`<td class="p-3 text-center bg-amber-100 text-slate-900 border-t border-slate-300 font-black">${gt}</td></tr>`;
     tfoot.innerHTML=fh;
+
+    // Top 20 DA Ofensores chart
+    renderTopDAsChart();
+}
+
+function renderTopDAsChart() {
+    if (sourceData.length === 0) return;
+    const colors = getThemeColors();
+    
+    // Aggregate value by DA name (filtered by active stations and weeks)
+    const activeWkNums = timelineActiveWeekKeys.map(k => { const m = k.match(/WK(\d+)/i); return m ? Number(m[1]) : null; }).filter(Boolean);
+    
+    const daMap = {};
+    sourceData.forEach(item => {
+        const wkNum = Number(item.wk);
+        if (!activeWkNums.includes(wkNum)) return;
+        if (timelineActiveStations.length > 0 && timelineActiveStations.length < [...new Set(sourceData.map(x=>x.station).filter(Boolean))].length) {
+            if (!timelineActiveStations.includes(item.station)) return;
+        }
+        const name = item.daName || 'N/A';
+        if (!daMap[name]) daMap[name] = { value: 0, count: 0 };
+        daMap[name].value += (item.value || 0);
+        daMap[name].count++;
+    });
+    
+    const top20 = Object.entries(daMap)
+        .map(([name, data]) => ({ name: name.split(' - ')[0].trim(), value: data.value, count: data.count }))
+        .sort((a,b) => b.value - a.value)
+        .slice(0, 20);
+    
+    if (chartInstances.topDAs) chartInstances.topDAs.destroy();
+    const ctx = document.getElementById('chartTopDAs');
+    if (!ctx) return;
+    
+    chartInstances.topDAs = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: top20.map(d => d.name.length > 20 ? d.name.substring(0,20)+'...' : d.name),
+            datasets: [{
+                label: 'Valor (R$)',
+                data: top20.map(d => d.value),
+                backgroundColor: '#ef4444',
+                borderRadius: 4,
+                datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 9 }, formatter: v => 'R$ ' + Math.round(v).toLocaleString('pt-BR') }
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, layout: { padding: { top: 30 } },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: colors.axisText, font: { size: 8 }, maxRotation: 45, minRotation: 45 } },
+                y: { grid: { color: colors.grid }, ticks: { color: colors.axisText, callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
+            }
+        }
+    });
 }
 
 function exportTimelineToExcel(){
@@ -1474,6 +1532,46 @@ function renderDpmoMensal() {
             scales: { x: { grid: { display: false }, ticks: { color: colors.axisText } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
         }
     });
+
+    // DPMO Mensal por Node (bar chart - média geral por node)
+    if (chartInstances.dpmoMensalNode) chartInstances.dpmoMensalNode.destroy();
+    const nodeAvgs = filtered.map(r => {
+        const vals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
+        const avg = vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+        return { node: r[nodeKey], avg };
+    }).filter(d => d.avg > 0).sort((a,b) => b.avg - a.avg);
+
+    const ctxNode = document.getElementById('chartDpmoMensalNode');
+    if (ctxNode) {
+        chartInstances.dpmoMensalNode = new Chart(ctxNode.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: nodeAvgs.map(d => d.node),
+                datasets: [{
+                    label: 'Média DPMO Mensal',
+                    data: nodeAvgs.map(d => d.avg),
+                    backgroundColor: nodeAvgs.map(d => d.avg <= target ? '#10b981' : '#1e3a5f'),
+                    borderRadius: 4,
+                    datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 10 }, formatter: v => Math.round(v).toLocaleString('pt-BR') }
+                },{
+                    label: 'Target',
+                    data: nodeAvgs.map(() => target),
+                    type: 'line',
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    borderDash: [6,4],
+                    pointRadius: 0,
+                    fill: false,
+                    datalabels: { display: false }
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, layout: { padding: { top: 30 } },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: colors.text } } },
+                scales: { x: { grid: { display: false }, ticks: { color: colors.axisText, font: { size: 9 } } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
+            }
+        });
+    }
 }
 
 function renderDpmoGeral() {
