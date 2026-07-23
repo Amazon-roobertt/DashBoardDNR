@@ -61,14 +61,7 @@ body.dark #timelineTable tfoot{background-color:#1f2937;color:#fff;border-top-co
 <svg class="w-14 h-3 text-[#FF9900]" viewBox="0 0 54 12" fill="none"><path d="M1 2C15 9 39 9 53 2M44 1C46 2.5 50.5 4 53 2C52 4.5 49 8.5 46.5 9" stroke="#FF9900" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 </div>
 <div class="flex items-center space-x-3">
-<label class="relative flex items-center justify-center px-3 py-1.5 bg-[#232f3e] hover:bg-[#37475a] text-slate-100 rounded-lg cursor-pointer transition text-xs font-bold border border-slate-700 select-none">
-<span>Selecionar Arquivo</span>
-<input type="file" id="excelFile" class="hidden" accept=".xlsx,.xls,.xlsb,.xlsm,.csv,.ods" onchange="handleExcelUpload(event)">
-</label>
-<button id="btnSalvar" onclick="saveToLocalStorage()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition text-xs font-bold border border-emerald-700 select-none flex items-center gap-1">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>Salvar</button>
-<button onclick="clearSystem()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition text-xs font-bold border border-slate-700 select-none flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Limpar</button>
+<button onclick="clearAllFilters()" class="px-4 py-1.5 bg-[#FF9900] hover:bg-[#e47911] text-[#131921] rounded-lg transition text-xs font-bold select-none flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>Limpar Filtros</button>
 <button onclick="toggleDarkMode()" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition border border-slate-700 select-none" title="Visão Noturna">
 <svg class="w-4 h-4 text-[#FF9900]" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
 </button>
@@ -287,6 +280,33 @@ let timelineActiveWeekKeys = [];
 let timelineActiveStations = [];
 let timelineSortColumnKey = '';
 let chartInstances = {};
+
+
+function clearAllFilters(){
+    // Dashboard filters
+    selectedFilters.finalReason=null;
+    selectedFilters.reason=null;
+    ['wk','month','station'].forEach(k=>selectAll(k,true));
+    // DPMO filters
+    if(typeof dpmoFilterSelectAll==='function') dpmoFilterSelectAll('dpmo-node',true);
+    // Timeline filters - reset stations and weeks
+    if(timelineActiveStations && sourceData.length>0){
+        const allStations=[...new Set(sourceData.map(x=>x.station).filter(Boolean))];
+        timelineActiveStations=[...allStations];
+        const c=document.getElementById('timeline-stations-checkboxes');
+        if(c) c.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
+    }
+    if(typeof buildTimelineWeeksStructure==='function' && sourceData.length>0){
+        const tw=buildTimelineWeeksStructure();
+        timelineActiveWeekKeys=tw.map(w=>w.key);
+        const c=document.getElementById('timeline-weeks-checkboxes');
+        if(c) c.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
+    }
+    // Refresh current view
+    if(activeTab==='dashboard') applyFilters();
+    else if(activeTab==='timeline') renderTimelineTable();
+    else if(activeTab==='dpmo') renderDpmoView();
+}
 
 // === THEME ===
 function toggleDarkMode() {
@@ -1447,8 +1467,11 @@ function renderDpmoMensal() {
     const mxmKey = keys.find(k => k.toLowerCase().includes('m x m') || k.toLowerCase().includes('mxm'));
     const monthKeys = keys.filter(k => k !== nodeKey && k !== targetKey && k !== mxmKey);
 
-    // All nodes (no filter)
+    // Filter by node (toggle via click)
     let filtered = rows;
+    if (dpmoFilters.node.length > 0 && dpmoFilters.node.length < [...new Set(rows.map(r=>String(r[nodeKey])))].length) {
+        filtered = rows.filter(r => dpmoFilters.node.includes(String(r[nodeKey])));
+    }
 
     const target = 500;
 
