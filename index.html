@@ -286,26 +286,30 @@ function clearAllFilters(){
     // Dashboard filters
     selectedFilters.finalReason=null;
     selectedFilters.reason=null;
-    ['wk','month','station'].forEach(k=>selectAll(k,true));
-    // DPMO filters
-    if(typeof dpmoFilterSelectAll==='function') dpmoFilterSelectAll('dpmo-node',true);
+    if(sourceData.length>0) ['wk','month','station'].forEach(k=>selectAll(k,true));
+    // DPMO filters - reset node filter
+    const dpmoNodeContainer=document.getElementById('options-dpmo-node');
+    if(dpmoNodeContainer){
+        const allNodes=[];
+        dpmoNodeContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{cb.checked=true;allNodes.push(cb.value);});
+        dpmoFilters.node=allNodes;
+        updateDpmoLabel('dpmo-node');
+    }
     // Timeline filters - reset stations and weeks
-    if(timelineActiveStations && sourceData.length>0){
+    if(sourceData.length>0){
         const allStations=[...new Set(sourceData.map(x=>x.station).filter(Boolean))];
         timelineActiveStations=[...allStations];
         const c=document.getElementById('timeline-stations-checkboxes');
         if(c) c.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
-    }
-    if(typeof buildTimelineWeeksStructure==='function' && sourceData.length>0){
         const tw=buildTimelineWeeksStructure();
         timelineActiveWeekKeys=tw.map(w=>w.key);
-        const c=document.getElementById('timeline-weeks-checkboxes');
-        if(c) c.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
+        const c2=document.getElementById('timeline-weeks-checkboxes');
+        if(c2) c2.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=true);
     }
-    // Refresh current view
-    if(activeTab==='dashboard') applyFilters();
-    else if(activeTab==='timeline') renderTimelineTable();
-    else if(activeTab==='dpmo') renderDpmoView();
+    // Refresh ALL views to ensure clean state
+    if(sourceData.length>0) applyFilters();
+    if(activeTab==='timeline') renderTimelineTable();
+    if(activeTab==='dpmo' || dpmoSemanalData.length>0 || dpmoMensalData.length>0) renderDpmoView();
 }
 
 // === THEME ===
@@ -1262,7 +1266,17 @@ function updateDpmoLabel(key) {
 function dpmoFilterByNode(nodeName) {
     // Toggle: if already sole filter, reset to all
     if (dpmoFilters.node.length === 1 && dpmoFilters.node[0] === nodeName) {
-        dpmoFilterSelectAll('dpmo-node', true);
+        // Reset to all nodes
+        const allNodes = [...new Set(dpmoSemanalData.concat(dpmoMensalData).map(r => {
+            const keys = Object.keys(r);
+            const nk = keys.find(k => k.toLowerCase().includes('node')) || keys[0];
+            return String(r[nk]);
+        }))].filter(Boolean);
+        dpmoFilters.node = allNodes;
+        const c = document.getElementById('options-dpmo-node');
+        if (c) c.querySelectorAll('input').forEach(cb => cb.checked = true);
+        updateDpmoLabel('dpmo-node');
+        renderDpmoView();
     } else {
         dpmoFilters.node = [nodeName];
         const c = document.getElementById('options-dpmo-node');
@@ -1298,8 +1312,11 @@ function renderDpmoSemanal() {
     const wkKeys = keys.filter(k => /^wk\d/i.test(k.replace(/\s/g,'')));
     const perfWkKeys = wkKeys.length > 0 ? wkKeys : keys.filter(k => k !== nodeKey && k !== targetKey);
 
-    // All nodes (no filter anymore)
+    // Filter by node (toggle via click on chart/table)
     let filtered = rows;
+    if (dpmoFilters.node.length > 0 && dpmoFilters.node.length < [...new Set(rows.map(r=>String(r[nodeKey])))].length) {
+        filtered = rows.filter(r => dpmoFilters.node.includes(String(r[nodeKey])));
+    }
     const visibleWks = perfWkKeys;
 
     const target = Number(filtered[0]?.[targetKey]) || 500;
