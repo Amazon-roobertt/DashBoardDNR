@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1719,6 +1719,104 @@ function clearSystemUI() {
     document.getElementById('view-dpmo').classList.add('hidden');
     document.getElementById('empty-state-container').classList.remove('hidden');
 }
+
+
+// === AUTO-LOAD FROM JSON (data/dashboard-data.json) ===
+async function autoLoadFromJSON() {
+    try {
+        const cacheBuster = new Date().getTime();
+        const response = await fetch('data/dashboard-data.json?t=' + cacheBuster);
+        if (!response.ok) return; // Arquivo não existe, manter modo manual
+        
+        const payload = await response.json();
+        console.log('[AutoLoad] Dados carregados:', payload.generatedAt);
+        
+        // Processar aba Dados (mesma lógica do handleExcelUpload)
+        if (payload.dados && payload.dados.length > 0) {
+            sourceData = payload.dados.map(row => ({
+                trackingId: row['Tracking ID'] || '',
+                station: row['Station'] || '',
+                customer: row['Customer'] || '',
+                daId: row['Da ID'] || '',
+                daName: row['Da Name'] || '',
+                value: Number(row['Value']) || 0,
+                deliveryDate: row['Delivery Date'] || '',
+                concessionDate: row['Concession Date'] || '',
+                wk: row['WK'] || '',
+                month: row['Month'] || '',
+                informVendor: row['Inform Vendor'] || '',
+                reason: row['Reason'] || '',
+                finalReason: row['Final Reason'] || '',
+                geo: row['GEO'] || ''
+            }));
+            
+            document.getElementById('empty-state-container').classList.add('hidden');
+            timelineSortColumnKey = '';
+            const targetWeeks = buildTimelineWeeksStructure();
+            const weeks2025 = targetWeeks.filter(w => w.year === 2025);
+            const other = targetWeeks.filter(w => w.year !== 2025);
+            timelineActiveWeekKeys = [...weeks2025.slice(-2).map(w=>w.key), ...other.slice(-4).map(w=>w.key)];
+            rebuildTimelineWeeksDropdown(targetWeeks);
+            rebuildTimelineStationsDropdown();
+            rebuildFilters();
+            applyFilters();
+        }
+        
+        // Processar DPMO Semanal
+        if (payload.dpmoSemanal && payload.dpmoSemanal.length > 0) {
+            dpmoSemanalData = payload.dpmoSemanal;
+            // Reconstruct _dpmoSemSections from flat data
+            window._dpmoSemSections = [{
+                headers: Object.keys(payload.dpmoSemanal[0]),
+                rows: payload.dpmoSemanal
+            }];
+        }
+        
+        // Processar DPMO Mensal
+        if (payload.dpmoMensal && payload.dpmoMensal.length > 0) {
+            dpmoMensalData = payload.dpmoMensal;
+            window._dpmoMenSections = [{
+                headers: Object.keys(payload.dpmoMensal[0]),
+                rows: payload.dpmoMensal
+            }];
+        }
+        
+        // Build DPMO filters
+        if (dpmoSemanalData.length > 0 || dpmoMensalData.length > 0) {
+            if (typeof buildDpmoFilters === 'function') buildDpmoFilters();
+        }
+        
+        // Atualizar a última data de geração no console
+        console.log('[AutoLoad] Dashboard carregado automaticamente. Fonte:', payload.sourceFile);
+        
+        switchTab(activeTab);
+        
+    } catch (err) {
+        console.log('[AutoLoad] Sem dados JSON disponíveis, modo manual ativo.', err.message);
+    }
+}
+
+// Substituir o onload original para incluir auto-load
+const _originalOnload = window.onload;
+window.onload = async function() {
+    clearSystemUI();
+    // Tentar carregar do IndexedDB primeiro (dados salvos pelo usuário)
+    const db = await openDB();
+    const tx = db.transaction('data', 'readonly');
+    const req = tx.objectStore('data').get('dashboard');
+    req.onsuccess = async () => {
+        if (req.result && req.result.sourceData && req.result.sourceData.length > 0) {
+            // Dados salvos existem, usar eles (prioridade do usuário)
+            loadFromStorage();
+        } else {
+            // Sem dados salvos, tentar auto-load do JSON
+            await autoLoadFromJSON();
+        }
+    };
+    req.onerror = async () => {
+        await autoLoadFromJSON();
+    };
+};
 
 </script>
 </body>
