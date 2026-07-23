@@ -61,7 +61,7 @@ body.dark #timelineTable tfoot{background-color:#1f2937;color:#fff;border-top-co
 <svg class="w-14 h-3 text-[#FF9900]" viewBox="0 0 54 12" fill="none"><path d="M1 2C15 9 39 9 53 2M44 1C46 2.5 50.5 4 53 2C52 4.5 49 8.5 46.5 9" stroke="#FF9900" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 </div>
 <div class="flex items-center space-x-3">
-<button onclick="clearAllFilters()" class="px-4 py-1.5 bg-[#FF9900] hover:bg-[#e47911] text-[#131921] rounded-lg transition text-xs font-bold select-none flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>Limpar Filtros</button>
+<input type="file" id="excelFile" class="hidden" accept=".xlsx,.xls,.xlsb,.xlsm,.csv,.ods" onchange="handleExcelUpload(event)"><button onclick="clearAllFilters()" class="px-4 py-1.5 bg-[#FF9900] hover:bg-[#e47911] text-[#131921] rounded-lg transition text-xs font-bold select-none flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>Limpar Filtros</button>
 <button onclick="toggleDarkMode()" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition border border-slate-700 select-none" title="Visão Noturna">
 <svg class="w-4 h-4 text-[#FF9900]" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
 </button>
@@ -1731,7 +1731,7 @@ async function clearStorage() {
 
 function clearSystemUI() {
     // Reset UI only without clearing storage
-    document.getElementById('excelFile').value='';
+    // excelFile removed (auto-update mode)
     document.getElementById('metric-trackings').innerText="0";
     document.getElementById('metric-value').innerText="R$ 0,00";
     document.getElementById('metric-stations').innerText="0";
