@@ -234,7 +234,15 @@ body.dark #timelineTable tfoot{background-color:#1f2937;color:#fff;border-top-co
 </div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-<h3 class="font-extrabold text-slate-800 text-base mb-4 text-center">DPMO Mensal — por Node</h3>
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+<h3 class="font-extrabold text-slate-800 text-base text-center sm:text-left flex-1">DPMO Mensal — por Node</h3>
+<div class="flex items-center gap-2 justify-center">
+<label for="dpmoMonthFilter" class="text-xs font-semibold text-slate-500 uppercase">Mês</label>
+<select id="dpmoMonthFilter" onchange="onDpmoMonthChange(this.value)" class="text-xs font-semibold border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9900] cursor-pointer">
+<option value="all">Média Geral (todos)</option>
+</select>
+</div>
+</div>
 <div class="h-[400px] w-full relative"><canvas id="chartDpmoMensalNode"></canvas></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
@@ -273,6 +281,7 @@ let activeDpmoSubTab = 'semanal';
 let selectedFilters = { wk: [], month: [], station: [], finalReason: null, reason: null };
 let dpmoFilters = { wk: [], month: [], node: [] };
 let dpmoSortState = { table: '', column: '', direction: 'desc' };
+let dpmoSelectedMonth = 'all';
 let timelineActiveWeekKeys = [];
 let timelineActiveStations = [];
 let timelineSortColumnKey = '';
@@ -1530,6 +1539,22 @@ function renderDpmoSemanal() {
     }
 }
 
+function populateDpmoMonthFilter(monthKeys) {
+    const sel = document.getElementById('dpmoMonthFilter');
+    if (!sel) return;
+    // Se o mês previamente selecionado não existir mais, reseta para "all"
+    if (dpmoSelectedMonth !== 'all' && !monthKeys.includes(dpmoSelectedMonth)) dpmoSelectedMonth = 'all';
+    let opts = '<option value="all">Média Geral (todos)</option>';
+    opts += monthKeys.map(m => `<option value="${m}">${m}</option>`).join('');
+    sel.innerHTML = opts;
+    sel.value = dpmoSelectedMonth;
+}
+
+function onDpmoMonthChange(value) {
+    dpmoSelectedMonth = value;
+    renderDpmoMensal();
+}
+
 function renderDpmoMensal() {
     if (dpmoMensalData.length === 0) return;
     const rows = dpmoMensalData;
@@ -1538,6 +1563,9 @@ function renderDpmoMensal() {
     const targetKey = keys.find(k => k.toLowerCase().includes('target'));
     const mxmKey = keys.find(k => k.toLowerCase().includes('m x m') || k.toLowerCase().includes('mxm'));
     const monthKeys = keys.filter(k => k !== nodeKey && k !== targetKey && k !== mxmKey);
+
+    // Popula o dropdown de mês (Média Geral + cada mês disponível)
+    populateDpmoMonthFilter(monthKeys);
 
     // Filter by node (toggle via click)
     let filtered = rows;
@@ -1602,6 +1630,9 @@ function renderDpmoMensal() {
     });
     document.getElementById('dpmoMensalPerfBody').innerHTML = perfTb;
 
+    // Mês selecionado — compartilhado entre os dois gráficos (dropdown + clique)
+    const selMonth = (dpmoSelectedMonth !== 'all' && monthKeys.includes(dpmoSelectedMonth)) ? dpmoSelectedMonth : 'all';
+
     // Performance Mensal Chart — average DPMO per month
     if (chartInstances.dpmoMensal) chartInstances.dpmoMensal.destroy();
     const colors = getThemeColors();
@@ -1609,6 +1640,8 @@ function renderDpmoMensal() {
         const vals = filtered.map(r => Number(r[m]) || 0).filter(v => v > 0);
         return vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
     });
+    // Destaca a barra do mês selecionado (laranja); "Média Geral" mantém todas na cor padrão
+    const monthBarColors = monthKeys.map(m => (selMonth !== 'all' && m === selMonth) ? '#FF9900' : '#1e3a5f');
 
     const ctx = document.getElementById('chartDpmoMensal').getContext('2d');
     chartInstances.dpmoMensal = new Chart(ctx, {
@@ -1616,25 +1649,39 @@ function renderDpmoMensal() {
         data: {
             labels: monthKeys,
             datasets: [
-                { label: 'DPMO Médio', data: monthAvgs, backgroundColor: '#1e3a5f', borderRadius: 6, datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 12 }, formatter: v => Math.round(v).toLocaleString('pt-BR') } },
+                { label: 'DPMO Médio', data: monthAvgs, backgroundColor: monthBarColors, borderRadius: 6, datalabels: { display: true, anchor: 'end', align: 'top', color: colors.text, font: { weight: 'bold', size: 12 }, formatter: v => Math.round(v).toLocaleString('pt-BR') } },
                 { label: 'Target', data: monthKeys.map(() => target), type: 'line', borderColor: '#ef4444', borderWidth: 2, borderDash: [6,4], pointRadius: 0, fill: false, datalabels: { display: false } }
             ]
         },
         options: {
             responsive: true, maintainAspectRatio: false, layout: { padding: { top: 24 } },
-            onClick: (ev, el, chart) => { /* future: filter by month */ },
+            onClick: (ev, el) => {
+                if (!el || !el.length) return;
+                const clicked = monthKeys[el[0].index];
+                if (!clicked) return;
+                // Clicar no mês já ativo volta para "Média Geral"
+                dpmoSelectedMonth = (clicked === dpmoSelectedMonth) ? 'all' : clicked;
+                renderDpmoMensal();
+            },
+            onHover: (ev, el) => { ev.native.target.style.cursor = el.length ? 'pointer' : 'default'; },
             plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: colors.text } } },
             scales: { x: { grid: { display: false }, ticks: { color: colors.axisText } }, y: { grid: { color: colors.grid }, ticks: { color: colors.axisText } } }
         }
     });
 
-    // DPMO Mensal por Node (bar chart - média geral por node)
+    // DPMO Mensal por Node (bar chart) — respeita o mês selecionado no filtro
     if (chartInstances.dpmoMensalNode) chartInstances.dpmoMensalNode.destroy();
     const nodeAvgs = filtered.map(r => {
-        const vals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
-        const avg = vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
-        return { node: r[nodeKey], avg };
+        let val;
+        if (selMonth === 'all') {
+            const vals = monthKeys.map(m => Number(r[m]) || 0).filter(v => v > 0);
+            val = vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length) : 0;
+        } else {
+            val = Math.round(Number(r[selMonth]) || 0);
+        }
+        return { node: r[nodeKey], avg: val };
     }).filter(d => d.avg > 0).sort((a,b) => b.avg - a.avg);
+    const nodeChartLabel = selMonth === 'all' ? 'Média DPMO Mensal' : `DPMO ${selMonth}`;
 
     const ctxNode = document.getElementById('chartDpmoMensalNode');
     if (ctxNode) {
@@ -1643,7 +1690,7 @@ function renderDpmoMensal() {
             data: {
                 labels: nodeAvgs.map(d => d.node),
                 datasets: [{
-                    label: 'Média DPMO Mensal',
+                    label: nodeChartLabel,
                     data: nodeAvgs.map(d => d.avg),
                     backgroundColor: nodeAvgs.map(d => d.avg <= target ? '#10b981' : '#1e3a5f'),
                     borderRadius: 4,
