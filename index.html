@@ -298,6 +298,7 @@ let dpmoSemanaWeeksSel = null;
 let timelineActiveWeekKeys = [];
 let timelineActiveStations = [];
 let timelineSortColumnKey = '';
+let timelineOffMapCache = null;
 let chartInstances = {};
 
 
@@ -668,6 +669,7 @@ function parseDpmoGeralSheet(aoa) {
 }
 
 function processMainData(rawRows) {
+    timelineOffMapCache = null; // invalida cache do timeline ao (re)carregar dados
     sourceData = rawRows.map(row => {
         const findVal = (synonyms) => {
             for (let s of synonyms) {
@@ -870,7 +872,7 @@ function updateIndicatorCards(){
 
 // === CLEAR ===
 function clearSystem(){
-    sourceData=[];filteredData=[];dpmoSemanalData=[];dpmoMensalData=[];dpmoGeralData=[];
+    sourceData=[];filteredData=[];dpmoSemanalData=[];dpmoMensalData=[];dpmoGeralData=[];timelineOffMapCache=null;
     window._dpmoSemSections=null;window._dpmoMenSections=null;
     timelineSortColumnKey='';timelineActiveWeekKeys=[];timelineActiveStations=[];
     selectedFilters={wk:[],month:[],station:[],finalReason:null,reason:null};
@@ -1017,14 +1019,31 @@ function getHeatmapColor(v){
     return'bg-[#8b0000] text-white font-bold';                      // Máxima (vermelho sangue)
 }
 
+function buildTimelineOffMap(targetWeeks){
+    // Lookup (ano2025?,wk) -> chave da semana; evita o loop aninhado por registro (O(n) em vez de O(n×semanas))
+    const weekLookup={};
+    targetWeeks.forEach(tw=>{ weekLookup[`${tw.year===2025?'Y':'N'}_${tw.wk}`]=tw.key; });
+    const offMap={};
+    sourceData.forEach(item=>{
+        const name=item.daName||"N/A";const id=item.daId||"S/ID";const st=item.station||"S/ST";
+        const rk=`${name}|||${id}|||${st}`;
+        if(!offMap[rk])offMap[rk]={daName:name,daId:id,station:st,counts:{},rowTotal:0};
+        const yr=getYearFromDate(item.deliveryDate);const wkN=Number(item.wk);
+        if(isNaN(wkN))return;
+        const key=weekLookup[`${yr===2025?'Y':'N'}_${wkN}`];
+        if(key){offMap[rk].counts[key]=(offMap[rk].counts[key]||0)+1;offMap[rk].rowTotal++;}
+    });
+    return offMap;
+}
+
 function renderTimelineTable(){
     const tbody=document.getElementById('timelineBody');const theadRow=document.getElementById('timelineHeaderRow');const tfoot=document.getElementById('timelineFooter');
     const search=document.getElementById('daSearchInput').value.toLowerCase().trim();
     if(sourceData.length===0){tbody.innerHTML='<tr><td colspan="5" class="p-6 text-center text-slate-500">Aguardando dados...</td></tr>';return;}
     const targetWeeks=buildTimelineWeeksStructure();const active=targetWeeks.filter(w=>timelineActiveWeekKeys.includes(w.key));
-    // Build offender map
-    const offMap={};
-    sourceData.forEach(item=>{const name=item.daName||"N/A";const id=item.daId||"S/ID";const st=item.station||"S/ST";const rk=`${name}|||${id}|||${st}`;if(!offMap[rk])offMap[rk]={daName:name,daId:id,station:st,counts:{},rowTotal:0};const yr=getYearFromDate(item.deliveryDate);const wkN=Number(item.wk);targetWeeks.forEach(tw=>{if(tw.year===2025){if(yr===2025&&wkN===tw.wk){offMap[rk].counts[tw.key]=(offMap[rk].counts[tw.key]||0)+1;offMap[rk].rowTotal++;}}else{if(yr!==2025&&wkN===tw.wk){offMap[rk].counts[tw.key]=(offMap[rk].counts[tw.key]||0)+1;offMap[rk].rowTotal++;}}});});
+    // Mapa de ofensores — cacheado (só depende de sourceData + semanas, não de quais colunas estão ativas)
+    if(!timelineOffMapCache) timelineOffMapCache = buildTimelineOffMap(targetWeeks);
+    const offMap = timelineOffMapCache;
     const keys=active.map(w=>w.key);
     if(!timelineSortColumnKey||(!keys.includes(timelineSortColumnKey)&&timelineSortColumnKey!=='TotalGeral'))timelineSortColumnKey=active.length>0?active[active.length-1].key:'TotalGeral';
     // Header
@@ -1069,15 +1088,15 @@ function renderTopDAsChart() {
     const colors = getThemeColors();
     
     // Aggregate value by DA name (filtered by active stations and weeks)
-    const activeWkNums = timelineActiveWeekKeys.map(k => { const m = k.match(/WK(\d+)/i); return m ? Number(m[1]) : null; }).filter(Boolean);
-    
+    const activeWkSet = new Set(timelineActiveWeekKeys.map(k => { const m = k.match(/WK(\d+)/i); return m ? Number(m[1]) : null; }).filter(v => v !== null));
+    const stationTotal = [...new Set(sourceData.map(x=>x.station).filter(Boolean))].length;
+    const stationFilterActive = timelineActiveStations.length > 0 && timelineActiveStations.length < stationTotal;
+
     const daMap = {};
     sourceData.forEach(item => {
         const wkNum = Number(item.wk);
-        if (!activeWkNums.includes(wkNum)) return;
-        if (timelineActiveStations.length > 0 && timelineActiveStations.length < [...new Set(sourceData.map(x=>x.station).filter(Boolean))].length) {
-            if (!timelineActiveStations.includes(item.station)) return;
-        }
+        if (!activeWkSet.has(wkNum)) return;
+        if (stationFilterActive && !timelineActiveStations.includes(item.station)) return;
         const name = item.daName || 'N/A';
         if (!daMap[name]) daMap[name] = { value: 0, count: 0 };
         daMap[name].value += (item.value || 0);
