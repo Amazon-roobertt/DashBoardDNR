@@ -168,12 +168,17 @@ body.dark #timelineTable tfoot{background-color:#1f2937;color:#fff;border-top-co
 </div>
 </div>
 <div class="flex flex-wrap items-center gap-4 mb-4 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
-<span class="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Legenda (últimos 3 meses):</span>
+<span class="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Contagem semanal:</span>
 <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#d1fae5] inline-block"></span><span>0</span></div>
 <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#d1fae5] inline-block border border-emerald-300"></span><span>1–10 (Controlado)</span></div>
 <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#fef08a] inline-block"></span><span>11–20 (Atenção)</span></div>
 <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#fed7aa] inline-block"></span><span>21–29 (Elevada)</span></div>
 <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#8b0000] inline-block"></span><span class="text-[#8b0000] font-bold">>30 (Máxima)</span></div>
+<span class="w-px h-4 bg-slate-300 inline-block mx-1"></span>
+<span class="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Acumulado (R$):</span>
+<div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#d1fae5] inline-block border border-emerald-300"></span><span>≤ 5k (Controlado/Atenção)</span></div>
+<div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#fed7aa] inline-block"></span><span>5k–7,5k (Elevado)</span></div>
+<div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-[#8b0000] inline-block"></span><span class="text-[#8b0000] font-bold">> 7,5k (Bloqueio do DA)</span></div>
 </div>
 <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-[600px] overflow-y-auto relative shadow-inner">
 <table class="w-full text-xs text-left border-collapse" id="timelineTable">
@@ -1019,6 +1024,13 @@ function getHeatmapColor(v){
     return'bg-[#8b0000] text-white font-bold';                      // Máxima (vermelho sangue)
 }
 
+function getAcumuladoColor(v){
+    // Bandas por valor acumulado (R$): ate 5k Controlado/Atencao, ate 7,5k Elevado, acima Bloqueio do DA
+    if(v>7500)return'bg-[#8b0000] text-white font-bold';            // Bloqueio do DA
+    if(v>5000)return'bg-[#fed7aa] text-orange-800 font-semibold';   // Elevado
+    return'bg-[#d1fae5] text-emerald-800 font-semibold';            // Controlado/Atencao
+}
+
 function buildTimelineOffMap(targetWeeks){
     // Lookup (ano2025?,wk) -> chave da semana; evita o loop aninhado por registro (O(n) em vez de O(n×semanas))
     const weekLookup={};
@@ -1027,11 +1039,11 @@ function buildTimelineOffMap(targetWeeks){
     sourceData.forEach(item=>{
         const name=item.daName||"N/A";const id=item.daId||"S/ID";const st=item.station||"S/ST";
         const rk=`${name}|||${id}|||${st}`;
-        if(!offMap[rk])offMap[rk]={daName:name,daId:id,station:st,counts:{},rowTotal:0};
+        if(!offMap[rk])offMap[rk]={daName:name,daId:id,station:st,counts:{},valueByWeek:{},rowTotal:0};
         const yr=getYearFromDate(item.deliveryDate);const wkN=Number(item.wk);
         if(isNaN(wkN))return;
         const key=weekLookup[`${yr===2025?'Y':'N'}_${wkN}`];
-        if(key){offMap[rk].counts[key]=(offMap[rk].counts[key]||0)+1;offMap[rk].rowTotal++;}
+        if(key){offMap[rk].counts[key]=(offMap[rk].counts[key]||0)+1;offMap[rk].valueByWeek[key]=(offMap[rk].valueByWeek[key]||0)+(Number(item.value)||0);offMap[rk].rowTotal++;}
     });
     return offMap;
 }
@@ -1045,9 +1057,10 @@ function renderTimelineTable(){
     if(!timelineOffMapCache) timelineOffMapCache = buildTimelineOffMap(targetWeeks);
     const offMap = timelineOffMapCache;
     const keys=active.map(w=>w.key);
-    if(!timelineSortColumnKey||(!keys.includes(timelineSortColumnKey)&&timelineSortColumnKey!=='TotalGeral'))timelineSortColumnKey=active.length>0?active[active.length-1].key:'TotalGeral';
+    if(!timelineSortColumnKey||(!keys.includes(timelineSortColumnKey)&&timelineSortColumnKey!=='TotalGeral'&&timelineSortColumnKey!=='AcumuladoRS'))timelineSortColumnKey=active.length>0?active[active.length-1].key:'TotalGeral';
     // Header
-    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th>`;
+    const isAcum=timelineSortColumnKey==='AcumuladoRS';
+    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th><th onclick="sortTimelineByWeek('AcumuladoRS')" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold whitespace-nowrap cursor-pointer hover:bg-slate-700 transition select-none ${isAcum?'ring-2 ring-[#FF9900] ring-inset':''}">Acumulado (R$)${isAcum?' ▼':''}</th>`;
     active.forEach(w=>{const sel=timelineSortColumnKey===w.key;hh+=`<th onclick="sortTimelineByWeek('${w.key}')" class="p-3 text-center bg-[#131921] border-b border-slate-700 text-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-800 transition select-none ${sel?'ring-2 ring-[#FF9900] ring-inset':''}">${w.label}${sel?' ▼':''}</th>`;});
     const isTot=timelineSortColumnKey==='TotalGeral';
     hh+=`<th onclick="sortTimelineByWeek('TotalGeral')" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTot?'ring-2 ring-[#FF9900] ring-inset':''}">Total${isTot?' ▼':''}</th>`;
@@ -1058,12 +1071,15 @@ function renderTimelineTable(){
     if(timelineActiveStations.length>0 && timelineActiveStations.length<[...new Set(sourceData.map(x=>x.station).filter(Boolean))].length){
         rows=rows.filter(r=>timelineActiveStations.includes(r.station));
     }
-    rows.forEach(r=>{let t=0;active.forEach(w=>t+=(r.counts[w.key]||0));r.viewTotal=t;});
-    if(timelineSortColumnKey==='TotalGeral')rows.sort((a,b)=>b.viewTotal-a.viewTotal);else rows.sort((a,b)=>(b.counts[timelineSortColumnKey]||0)-(a.counts[timelineSortColumnKey]||0));
-    let bh="";const colTotals={};active.forEach(w=>colTotals[w.key]=0);let gt=0;
+    rows.forEach(r=>{let t=0,acum=0;active.forEach(w=>{t+=(r.counts[w.key]||0);acum+=(r.valueByWeek?.[w.key]||0);});r.viewTotal=t;r.acumuladoRS=acum;});
+    if(timelineSortColumnKey==='TotalGeral')rows.sort((a,b)=>b.viewTotal-a.viewTotal);
+    else if(timelineSortColumnKey==='AcumuladoRS')rows.sort((a,b)=>b.acumuladoRS-a.acumuladoRS);
+    else rows.sort((a,b)=>(b.counts[timelineSortColumnKey]||0)-(a.counts[timelineSortColumnKey]||0));
+    let bh="";const colTotals={};active.forEach(w=>colTotals[w.key]=0);let gt=0;let gtAcum=0;
     rows.forEach((row,i)=>{
         const z=i%2===0?'bg-white':'bg-slate-50';
-        bh+=`<tr class="hover:bg-slate-100 ${z} transition"><td class="p-2.5 font-medium text-slate-800 border-b border-slate-200 sticky-col ${z} truncate max-w-[200px]">${row.daName}</td><td class="p-2.5 text-slate-500 border-b border-slate-200">${row.daId}</td><td class="p-2.5 font-semibold text-slate-600 border-b border-slate-200">${row.station}</td>`;
+        const acum=row.acumuladoRS||0;gtAcum+=acum;
+        bh+=`<tr class="hover:bg-slate-100 ${z} transition"><td class="p-2.5 font-medium text-slate-800 border-b border-slate-200 sticky-col ${z} truncate max-w-[200px]">${row.daName}</td><td class="p-2.5 text-slate-500 border-b border-slate-200">${row.daId}</td><td class="p-2.5 font-semibold text-slate-600 border-b border-slate-200">${row.station}</td><td class="p-2.5 text-center font-bold border border-slate-200 ${getAcumuladoColor(acum)}">R$ ${Math.round(acum).toLocaleString('pt-BR')}</td>`;
         active.forEach(w=>{const v=row.counts[w.key]||0;colTotals[w.key]+=v;bh+=`<td class="p-2.5 text-center border border-slate-200 ${getHeatmapColor(v)}">${v}</td>`;});
         // Total column colored by last 3 months sum
         const last3Months = active.slice(-12); // approx last 3 months (12 weeks)
@@ -1072,9 +1088,9 @@ function renderTimelineTable(){
         const totalColor = getHeatmapColor(last3Total);
         bh+=`<td class="p-2.5 text-center font-extrabold border-b border-slate-200 ${totalColor}">${row.viewTotal}</td></tr>`;gt+=row.viewTotal;
     });
-    if(rows.length===0)bh=`<tr><td colspan="${active.length+4}" class="p-8 text-center text-slate-400">Nenhum DA encontrado.</td></tr>`;
+    if(rows.length===0)bh=`<tr><td colspan="${active.length+5}" class="p-8 text-center text-slate-400">Nenhum DA encontrado.</td></tr>`;
     tbody.innerHTML=bh;
-    let fh=`<tr><td class="p-3 sticky-col bg-slate-100 font-bold border-t border-slate-300">Total</td><td class="p-3 bg-slate-100 border-t border-slate-300"></td><td class="p-3 bg-slate-100 border-t border-slate-300"></td>`;
+    let fh=`<tr><td class="p-3 sticky-col bg-slate-100 font-bold border-t border-slate-300">Total</td><td class="p-3 bg-slate-100 border-t border-slate-300"></td><td class="p-3 bg-slate-100 border-t border-slate-300"></td><td class="p-3 text-center bg-slate-200 text-slate-900 border-t border-slate-300 font-black">R$ ${Math.round(gtAcum).toLocaleString('pt-BR')}</td>`;
     active.forEach(w=>fh+=`<td class="p-3 text-center bg-slate-100 border-t border-slate-300 font-extrabold">${colTotals[w.key]}</td>`);
     fh+=`<td class="p-3 text-center bg-amber-100 text-slate-900 border-t border-slate-300 font-black">${gt}</td></tr>`;
     tfoot.innerHTML=fh;
