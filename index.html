@@ -993,17 +993,11 @@ function getYearFromDate(dateVal){const d=parseDelivery(dateVal);return d?d.getF
 
 function buildTimelineWeeksStructure(){
     if(sourceData.length===0)return[];
-    // Considera apenas os ultimos 3 meses (~91 dias) a partir da data mais recente dos dados.
-    // Remove semanas antigas (ex.: 2025) que nao devem mais aparecer no filtro.
-    let maxT=0;
-    sourceData.forEach(row=>{const d=parseDelivery(row.deliveryDate);if(d){const t=d.getTime();if(t>maxT)maxT=t;}});
-    const cutoff=maxT?maxT-91*86400*1000:0;
+    // Mostra TODAS as semanas presentes nos dados importados (igual ao arquivo Excel).
     const all=[];const seen=new Set();
     sourceData.forEach(row=>{
         const wk=Number(row.wk);if(isNaN(wk))return;
-        const d=parseDelivery(row.deliveryDate);
-        if(cutoff&&d&&d.getTime()<cutoff)return; // fora dos ultimos 3 meses
-        const yr=d?d.getFullYear():2026;
+        const yr=getYearFromDate(row.deliveryDate)||2026;
         const key=yr===2025?`WK${wk}_2025`:`WK${wk}`;const label=yr===2025?`WK${wk}/2025`:`WK${wk}`;
         if(!seen.has(key)){seen.add(key);all.push({wk,year:yr,key,label});}
     });
@@ -1058,8 +1052,8 @@ function buildTimelineOffMap(targetWeeks){
         const key=weekLookup[`${yr===2025?'Y':'N'}_${wkN}`];
         if(key){offMap[rk].counts[key]=(offMap[rk].counts[key]||0)+1;offMap[rk].valueByWeek[key]=(offMap[rk].valueByWeek[key]||0)+(Number(item.value)||0);offMap[rk].rowTotal++;}
     });
-    // Total/Acumulado FIXOS das ultimas 3 semanas — NAO mudam com o filtro de semanas
-    const fixedKeys=targetWeeks.slice(-3).map(w=>w.key);
+    // Total/Acumulado FIXOS dos ultimos 3 meses (13 semanas mais recentes) — NAO mudam com o filtro de semanas
+    const fixedKeys=targetWeeks.slice(-13).map(w=>w.key);
     Object.values(offMap).forEach(o=>{let fc=0,fv=0;fixedKeys.forEach(k=>{fc+=(o.counts[k]||0);fv+=(o.valueByWeek[k]||0);});o.fixedCount=fc;o.fixedValue=fv;});
     return offMap;
 }
@@ -1076,10 +1070,10 @@ function renderTimelineTable(){
     if(!timelineSortColumnKey||(!keys.includes(timelineSortColumnKey)&&timelineSortColumnKey!=='TotalGeral'&&timelineSortColumnKey!=='AcumuladoRS'))timelineSortColumnKey=active.length>0?active[active.length-1].key:'TotalGeral';
     // Header
     const isAcum=timelineSortColumnKey==='AcumuladoRS';
-    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th><th onclick="sortTimelineByWeek('AcumuladoRS')" title="Valor acumulado FIXO das últimas 3 semanas do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold whitespace-nowrap cursor-pointer hover:bg-slate-700 transition select-none ${isAcum?'ring-2 ring-[#FF9900] ring-inset':''}">Acumulado (R$)<br><span class="text-[9px] font-normal opacity-70">últimas 3 semanas</span>${isAcum?' ▼':''}</th>`;
+    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th><th onclick="sortTimelineByWeek('AcumuladoRS')" title="Valor acumulado FIXO dos últimos 3 meses do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold whitespace-nowrap cursor-pointer hover:bg-slate-700 transition select-none ${isAcum?'ring-2 ring-[#FF9900] ring-inset':''}">Acumulado (R$)<br><span class="text-[9px] font-normal opacity-70">últimos 3 meses</span>${isAcum?' ▼':''}</th>`;
     active.forEach(w=>{const sel=timelineSortColumnKey===w.key;hh+=`<th onclick="sortTimelineByWeek('${w.key}')" class="p-3 text-center bg-[#131921] border-b border-slate-700 text-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-800 transition select-none ${sel?'ring-2 ring-[#FF9900] ring-inset':''}">${w.label}${sel?' ▼':''}</th>`;});
     const isTot=timelineSortColumnKey==='TotalGeral';
-    hh+=`<th onclick="sortTimelineByWeek('TotalGeral')" title="Quantidade de casos FIXA das últimas 3 semanas do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTot?'ring-2 ring-[#FF9900] ring-inset':''}">Total<br><span class="text-[9px] font-normal opacity-70">últimas 3 semanas</span>${isTot?' ▼':''}</th>`;
+    hh+=`<th onclick="sortTimelineByWeek('TotalGeral')" title="Quantidade de casos FIXA dos últimos 3 meses do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTot?'ring-2 ring-[#FF9900] ring-inset':''}">Total<br><span class="text-[9px] font-normal opacity-70">últimos 3 meses</span>${isTot?' ▼':''}</th>`;
     theadRow.innerHTML=hh;
     let rows=Object.values(offMap);
     if(search)rows=rows.filter(r=>r.daName.toLowerCase().includes(search)||String(r.daId).toLowerCase().includes(search));
