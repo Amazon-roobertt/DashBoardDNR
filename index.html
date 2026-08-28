@@ -982,18 +982,31 @@ function renderWeekViewChart(){
 }
 
 // === TIMELINE ===
-function getYearFromDate(dateVal){
+function parseDelivery(dateVal){
     if(!dateVal)return null;let d=new Date(dateVal);
     if(typeof dateVal==='number')d=new Date((dateVal-25569)*86400*1000);
     else if(typeof dateVal==='string'&&!isNaN(dateVal)){const n=Number(dateVal);if(!isNaN(n)&&n>30000)d=new Date((n-25569)*86400*1000);}
     else if(isNaN(d.getTime())&&typeof dateVal==='string'){const p=dateVal.split('/');if(p.length===3)d=new Date(p[2],p[1]-1,p[0]);}
-    return isNaN(d.getTime())?null:d.getFullYear();
+    return isNaN(d.getTime())?null:d;
 }
+function getYearFromDate(dateVal){const d=parseDelivery(dateVal);return d?d.getFullYear():null;}
 
 function buildTimelineWeeksStructure(){
     if(sourceData.length===0)return[];
+    // Considera apenas os ultimos 3 meses (~91 dias) a partir da data mais recente dos dados.
+    // Remove semanas antigas (ex.: 2025) que nao devem mais aparecer no filtro.
+    let maxT=0;
+    sourceData.forEach(row=>{const d=parseDelivery(row.deliveryDate);if(d){const t=d.getTime();if(t>maxT)maxT=t;}});
+    const cutoff=maxT?maxT-91*86400*1000:0;
     const all=[];const seen=new Set();
-    sourceData.forEach(row=>{const wk=Number(row.wk);if(isNaN(wk))return;const yr=getYearFromDate(row.deliveryDate)||2026;const key=yr===2025?`WK${wk}_2025`:`WK${wk}`;const label=yr===2025?`WK${wk}/2025`:`WK${wk}`;if(!seen.has(key)){seen.add(key);all.push({wk,year:yr,key,label});}});
+    sourceData.forEach(row=>{
+        const wk=Number(row.wk);if(isNaN(wk))return;
+        const d=parseDelivery(row.deliveryDate);
+        if(cutoff&&d&&d.getTime()<cutoff)return; // fora dos ultimos 3 meses
+        const yr=d?d.getFullYear():2026;
+        const key=yr===2025?`WK${wk}_2025`:`WK${wk}`;const label=yr===2025?`WK${wk}/2025`:`WK${wk}`;
+        if(!seen.has(key)){seen.add(key);all.push({wk,year:yr,key,label});}
+    });
     all.sort((a,b)=>a.year!==b.year?a.year-b.year:a.wk-b.wk);return all;
 }
 
@@ -1045,6 +1058,9 @@ function buildTimelineOffMap(targetWeeks){
         const key=weekLookup[`${yr===2025?'Y':'N'}_${wkN}`];
         if(key){offMap[rk].counts[key]=(offMap[rk].counts[key]||0)+1;offMap[rk].valueByWeek[key]=(offMap[rk].valueByWeek[key]||0)+(Number(item.value)||0);offMap[rk].rowTotal++;}
     });
+    // Total/Acumulado FIXOS das ultimas 3 semanas — NAO mudam com o filtro de semanas
+    const fixedKeys=targetWeeks.slice(-3).map(w=>w.key);
+    Object.values(offMap).forEach(o=>{let fc=0,fv=0;fixedKeys.forEach(k=>{fc+=(o.counts[k]||0);fv+=(o.valueByWeek[k]||0);});o.fixedCount=fc;o.fixedValue=fv;});
     return offMap;
 }
 
@@ -1060,10 +1076,10 @@ function renderTimelineTable(){
     if(!timelineSortColumnKey||(!keys.includes(timelineSortColumnKey)&&timelineSortColumnKey!=='TotalGeral'&&timelineSortColumnKey!=='AcumuladoRS'))timelineSortColumnKey=active.length>0?active[active.length-1].key:'TotalGeral';
     // Header
     const isAcum=timelineSortColumnKey==='AcumuladoRS';
-    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th><th onclick="sortTimelineByWeek('AcumuladoRS')" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold whitespace-nowrap cursor-pointer hover:bg-slate-700 transition select-none ${isAcum?'ring-2 ring-[#FF9900] ring-inset':''}">Acumulado (R$)${isAcum?' ▼':''}</th>`;
+    let hh=`<th class="p-3 bg-slate-900 border-b border-slate-700 sticky-col text-slate-200" style="min-width:180px">DA Name</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">DA ID</th><th class="p-3 bg-slate-900 border-b border-slate-700 text-slate-200">Station</th><th onclick="sortTimelineByWeek('AcumuladoRS')" title="Valor acumulado FIXO das últimas 3 semanas do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold whitespace-nowrap cursor-pointer hover:bg-slate-700 transition select-none ${isAcum?'ring-2 ring-[#FF9900] ring-inset':''}">Acumulado (R$)<br><span class="text-[9px] font-normal opacity-70">últimas 3 semanas</span>${isAcum?' ▼':''}</th>`;
     active.forEach(w=>{const sel=timelineSortColumnKey===w.key;hh+=`<th onclick="sortTimelineByWeek('${w.key}')" class="p-3 text-center bg-[#131921] border-b border-slate-700 text-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-800 transition select-none ${sel?'ring-2 ring-[#FF9900] ring-inset':''}">${w.label}${sel?' ▼':''}</th>`;});
     const isTot=timelineSortColumnKey==='TotalGeral';
-    hh+=`<th onclick="sortTimelineByWeek('TotalGeral')" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTot?'ring-2 ring-[#FF9900] ring-inset':''}">Total${isTot?' ▼':''}</th>`;
+    hh+=`<th onclick="sortTimelineByWeek('TotalGeral')" title="Quantidade de casos FIXA das últimas 3 semanas do DA — não muda com o filtro de semanas" class="p-3 text-center bg-slate-800 border-b border-slate-700 text-white font-bold cursor-pointer hover:bg-slate-700 transition select-none ${isTot?'ring-2 ring-[#FF9900] ring-inset':''}">Total<br><span class="text-[9px] font-normal opacity-70">últimas 3 semanas</span>${isTot?' ▼':''}</th>`;
     theadRow.innerHTML=hh;
     let rows=Object.values(offMap);
     if(search)rows=rows.filter(r=>r.daName.toLowerCase().includes(search)||String(r.daId).toLowerCase().includes(search));
@@ -1072,21 +1088,19 @@ function renderTimelineTable(){
         rows=rows.filter(r=>timelineActiveStations.includes(r.station));
     }
     rows.forEach(r=>{let t=0,acum=0;active.forEach(w=>{t+=(r.counts[w.key]||0);acum+=(r.valueByWeek?.[w.key]||0);});r.viewTotal=t;r.acumuladoRS=acum;});
-    if(timelineSortColumnKey==='TotalGeral')rows.sort((a,b)=>b.viewTotal-a.viewTotal);
-    else if(timelineSortColumnKey==='AcumuladoRS')rows.sort((a,b)=>b.acumuladoRS-a.acumuladoRS);
+    if(timelineSortColumnKey==='TotalGeral')rows.sort((a,b)=>(b.fixedCount||0)-(a.fixedCount||0));
+    else if(timelineSortColumnKey==='AcumuladoRS')rows.sort((a,b)=>(b.fixedValue||0)-(a.fixedValue||0));
     else rows.sort((a,b)=>(b.counts[timelineSortColumnKey]||0)-(a.counts[timelineSortColumnKey]||0));
     let bh="";const colTotals={};active.forEach(w=>colTotals[w.key]=0);let gt=0;let gtAcum=0;
     rows.forEach((row,i)=>{
         const z=i%2===0?'bg-white':'bg-slate-50';
-        const acum=row.acumuladoRS||0;gtAcum+=acum;
+        const acum=row.fixedValue||0;gtAcum+=acum;
         bh+=`<tr class="hover:bg-slate-100 ${z} transition"><td class="p-2.5 font-medium text-slate-800 border-b border-slate-200 sticky-col ${z} truncate max-w-[200px]">${row.daName}</td><td class="p-2.5 text-slate-500 border-b border-slate-200">${row.daId}</td><td class="p-2.5 font-semibold text-slate-600 border-b border-slate-200">${row.station}</td><td class="p-2.5 text-center font-bold border border-slate-200 ${getAcumuladoColor(acum)}">R$ ${Math.round(acum).toLocaleString('pt-BR')}</td>`;
         active.forEach(w=>{const v=row.counts[w.key]||0;colTotals[w.key]+=v;bh+=`<td class="p-2.5 text-center border border-slate-200 ${getHeatmapColor(v)}">${v}</td>`;});
-        // Total column colored by last 3 months sum
-        const last3Months = active.slice(-12); // approx last 3 months (12 weeks)
-        let last3Total = 0;
-        last3Months.forEach(w => last3Total += (row.counts[w.key] || 0));
-        const totalColor = getHeatmapColor(last3Total);
-        bh+=`<td class="p-2.5 text-center font-extrabold border-b border-slate-200 ${totalColor}">${row.viewTotal}</td></tr>`;gt+=row.viewTotal;
+        // Total = contagem FIXA dos ultimos 3 meses (nao muda com o filtro de semanas)
+        const totalFixo = row.fixedCount||0;
+        const totalColor = getHeatmapColor(totalFixo);
+        bh+=`<td class="p-2.5 text-center font-extrabold border-b border-slate-200 ${totalColor}">${totalFixo}</td></tr>`;gt+=totalFixo;
     });
     if(rows.length===0)bh=`<tr><td colspan="${active.length+5}" class="p-8 text-center text-slate-400">Nenhum DA encontrado.</td></tr>`;
     tbody.innerHTML=bh;
